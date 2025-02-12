@@ -21,7 +21,20 @@ export async function POST(req: Request) {
       },
       ...messages,
     ],
-    functions: [tools.getWeather],
+    functions: [{
+      name: "getWeather",
+      description: "Get the weather for a specific location",
+      parameters: {
+        type: "object",
+        properties: {
+          location: {
+            type: "string",
+            description: "The location to get weather for"
+          }
+        },
+        required: ["location"]
+      }
+    }],
     function_call: "auto",
   })
 

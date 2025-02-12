@@ -82,3 +82,26 @@ export interface PortfolioData {
   taxOptimization: TaxOptimizationData
 }
 
+export interface PortfolioAnalytics {
+  performance: {
+    totalReturn: number
+    annualizedReturn: number
+    sharpeRatio: number
+    volatility: number
+    maxDrawdown: number
+    alpha: number
+    beta: number
+  }
+  allocation: {
+    byAsset: Array<{ name: string; value: number }>
+    bySector: Array<{ name: string; value: number }>
+  }
+  risk: {
+    riskScore: number
+    riskLevel: string
+    concentrationRisk: string
+    marketRisk: string
+    currencyRisk: string
+  }
+}
+

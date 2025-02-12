@@ -1,4 +1,5 @@
 import type { PortfolioData, Recommendation } from "@/types/portfolio-analytics"
+import { PortfolioAnalytics } from '@/types/portfolio-analytics'
 
 export async function getPortfolioData(): Promise<PortfolioData> {
   // TODO: Implement actual API call to fetch portfolio data
@@ -107,5 +108,42 @@ export async function executeRecommendation(recommendation: Recommendation): Pro
       resolve()
     }, 1000)
   })
+}
+
+export async function getPortfolioAnalytics(): Promise<PortfolioAnalytics> {
+  // This is a mock implementation. Replace with actual API call when ready.
+  return {
+    performance: {
+      totalReturn: 12.5,
+      annualizedReturn: 8.2,
+      sharpeRatio: 1.5,
+      volatility: 15.3,
+      maxDrawdown: -18.4,
+      alpha: 2.1,
+      beta: 0.85
+    },
+    allocation: {
+      byAsset: [
+        { name: 'Stocks', value: 65 },
+        { name: 'Bonds', value: 20 },
+        { name: 'Cash', value: 10 },
+        { name: 'Other', value: 5 }
+      ],
+      bySector: [
+        { name: 'Technology', value: 30 },
+        { name: 'Healthcare', value: 20 },
+        { name: 'Financials', value: 15 },
+        { name: 'Consumer', value: 15 },
+        { name: 'Other', value: 20 }
+      ]
+    },
+    risk: {
+      riskScore: 7.5,
+      riskLevel: 'Moderate-High',
+      concentrationRisk: 'Low',
+      marketRisk: 'Medium',
+      currencyRisk: 'Low'
+    }
+  }
 }
 

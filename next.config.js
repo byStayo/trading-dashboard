@@ -2,11 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  experimental: {
-    // Disable experimental features that might cause issues
-    serverActions: false,
-    serverComponents: false
-  },
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
