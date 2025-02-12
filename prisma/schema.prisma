@@ -1,0 +1,197 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User and Authentication
+model User {
+  id                String            @id @default(cuid())
+  email             String            @unique
+  name              String?
+  password          String            // Hashed password
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  emailVerified     Boolean           @default(false)
+  portfolios        Portfolio[]
+  watchlists        Watchlist[]
+  alerts            Alert[]
+  tradeJournals     TradeJournal[]
+  sessions          Session[]
+  verificationToken VerificationToken?
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Portfolio Management
+model Portfolio {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  userId      String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  positions   Position[]
+  orders      Order[]
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cash        Decimal       @default(0)
+  currency    String        @default("USD")
+  isDefault   Boolean       @default(false)
+  trades      Trade[]
+  performance Performance[]
+}
+
+model Position {
+  id          String   @id @default(cuid())
+  portfolioId String
+  symbol      String
+  quantity    Decimal
+  costBasis   Decimal
+  openedAt    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  trades      Trade[]
+
+  @@unique([portfolioId, symbol])
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  portfolioId String
+  symbol      String
+  type        OrderType
+  side        OrderSide
+  quantity    Decimal
+  price       Decimal?
+  status      OrderStatus
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  expiresAt   DateTime?
+  portfolio   Portfolio   @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  trades      Trade[]
+}
+
+model Trade {
+  id          String    @id @default(cuid())
+  portfolioId String
+  positionId  String
+  orderId     String?
+  symbol      String
+  quantity    Decimal
+  price       Decimal
+  side        OrderSide
+  executedAt  DateTime  @default(now())
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  position    Position  @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  order       Order?    @relation(fields: [orderId], references: [id])
+}
+
+// Watchlists and Alerts
+model Watchlist {
+  id        String    @id @default(cuid())
+  name      String
+  userId    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  symbols   String[]
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Alert {
+  id        String      @id @default(cuid())
+  userId    String
+  symbol    String
+  type      AlertType
+  condition AlertCondition
+  value     Decimal
+  active    Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Performance Tracking
+model Performance {
+  id          String    @id @default(cuid())
+  portfolioId String
+  date        DateTime  @default(now())
+  value       Decimal
+  cash        Decimal
+  deposits    Decimal
+  withdrawals Decimal
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, date])
+}
+
+// Trade Journal
+model TradeJournal {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  content     String
+  sentiment   String?
+  tags        String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Enums
+enum OrderType {
+  MARKET
+  LIMIT
+  STOP
+  STOP_LIMIT
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  PENDING
+  FILLED
+  CANCELLED
+  EXPIRED
+  REJECTED
+}
+
+enum AlertType {
+  PRICE
+  VOLUME
+  TECHNICAL
+  NEWS
+}
+
+enum AlertCondition {
+  ABOVE
+  BELOW
+  EQUALS
+  CROSSES_ABOVE
+  CROSSES_BELOW
+}

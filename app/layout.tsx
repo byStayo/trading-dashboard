@@ -1,5 +1,6 @@
 import { Inter } from "next/font/google"
 import "./globals.css"
+import "../styles/ticker.css"
 import { AuthProvider } from "@/components/auth/auth-provider"
 import { AppStateProvider } from "@/lib/app-state-context"
 import { Sidebar } from "@/components/sidebar"

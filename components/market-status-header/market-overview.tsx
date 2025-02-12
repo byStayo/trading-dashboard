@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
+import { useState, useEffect } from "react"
 
 interface ChartData {
   time: number
@@ -38,6 +39,13 @@ const mockSectorPerformance: SectorPerformance[] = [
   { name: "Energy", value: -1.87 },
   { name: "Consumer", value: 0.76 },
 ]
+
+export const DEFAULT_CONFIG: TickerConfig = {
+  preset: "trending" as TickerPreset,
+  customTickers: [],
+  maxTickers: 20,
+  sector: undefined // Optional field
+}
 
 export function MarketOverview() {
   return (
@@ -91,5 +99,58 @@ export function MarketOverview() {
       </CardContent>
     </Card>
   )
+}
+
+export function LiveTickerWrapper() {
+  // Initialize with DEFAULT_CONFIG immediately
+  const [config, setConfig] = useState<TickerConfig>(DEFAULT_CONFIG)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load config from localStorage
+  useEffect(() => {
+    try {
+      const savedConfig = localStorage.getItem(STORAGE_KEY)
+      if (savedConfig) {
+        const parsedConfig = JSON.parse(savedConfig)
+        // Validate the config structure
+        if (
+          parsedConfig &&
+          typeof parsedConfig === 'object' &&
+          'preset' in parsedConfig &&
+          'customTickers' in parsedConfig &&
+          'maxTickers' in parsedConfig &&
+          Array.isArray(parsedConfig.customTickers)
+        ) {
+          setConfig(parsedConfig)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading ticker config:', error)
+      // Keep using DEFAULT_CONFIG if there's an error
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  // Rest of the component remains the same...
+}
+
+export function TickerConfigDialog({ 
+  open, 
+  onOpenChange, 
+  onSave,
+  currentConfig = DEFAULT_CONFIG // Provide default value
+}: TickerConfigDialogProps) {
+  const [config, setConfig] = useState<TickerConfig>(currentConfig)
+
+  // Update local state when currentConfig changes
+  useEffect(() => {
+    if (currentConfig) {
+      setConfig(currentConfig)
+    }
+  }, [currentConfig])
+
+  // Rest of the component remains the same...
 }
 

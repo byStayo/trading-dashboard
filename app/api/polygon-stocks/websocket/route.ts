@@ -7,8 +7,12 @@ const WS_STOCKS_URL = "wss://delayed.polygon.io/stocks"
 export async function GET(request: NextRequest) {
   try {
     const apiKey = process.env.POLYGON_API_KEY
+
     if (!apiKey) {
-      throw new Error("Polygon API key not set")
+      return NextResponse.json(
+        { error: 'Polygon API key not configured' },
+        { status: 500 }
+      )
     }
 
     // Get authentication token
@@ -27,14 +31,10 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error(`Error setting up WebSocket connection: ${error.message}`)
+    console.error('WebSocket connection error:', error)
     return NextResponse.json(
-      {
-        error: error.message || "Failed to setup WebSocket connection",
-        status: "error",
-        timestamp: new Date().toISOString()
-      },
-      { status: error.status || 500 }
+      { error: 'Failed to get WebSocket connection details' },
+      { status: 500 }
     )
   }
 } 

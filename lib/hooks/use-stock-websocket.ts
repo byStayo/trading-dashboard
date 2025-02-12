@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { PolygonWebSocket } from '../websocket-client'
+import { polygonWebSocket } from '@/lib/api/polygon-websocket'
+import { QuoteMessage, AggregateMessage } from '@/types/polygon'
 
 interface UseStockWebSocketParams {
   symbols: string[]
-  onUpdate?: (data: any) => void
+  onQuote?: (data: QuoteMessage) => void
+  onAggregate?: (data: AggregateMessage) => void
   onError?: (error: Error) => void
 }
 
@@ -15,19 +17,24 @@ interface UseStockWebSocketReturn {
 
 export function useStockWebSocket({
   symbols,
-  onUpdate,
+  onQuote,
+  onAggregate,
   onError
 }: UseStockWebSocketParams): UseStockWebSocketReturn {
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<Error | null>(null)
-  const [ws, setWs] = useState<PolygonWebSocket | null>(null)
 
-  const handleStatusChange = useCallback((status: 'connecting' | 'connected' | 'disconnected' | 'error') => {
-    setIsConnected(status === 'connected')
-    if (status === 'error') {
-      setError(new Error('WebSocket connection error'))
+  const handleQuote = useCallback((quote: QuoteMessage) => {
+    if (onQuote) {
+      onQuote(quote)
     }
-  }, [])
+  }, [onQuote])
+
+  const handleAggregate = useCallback((agg: AggregateMessage) => {
+    if (onAggregate) {
+      onAggregate(agg)
+    }
+  }, [onAggregate])
 
   const handleError = useCallback((err: Error) => {
     setError(err)
@@ -36,46 +43,47 @@ export function useStockWebSocket({
     }
   }, [onError])
 
-  const connect = useCallback(() => {
-    if (ws) {
-      ws.disconnect()
+  useEffect(() => {
+    // Set up event listeners
+    polygonWebSocket.on('quote', handleQuote)
+    polygonWebSocket.on('aggregate', handleAggregate)
+    polygonWebSocket.on('error', handleError)
+    polygonWebSocket.on('max_reconnects', () => {
+      handleError(new Error('Maximum reconnection attempts reached'))
+    })
+
+    // Connect and subscribe
+    polygonWebSocket.connect()
+    if (symbols.length > 0) {
+      polygonWebSocket.subscribe(symbols)
     }
 
-    const newWs = new PolygonWebSocket({
-      onMessage: onUpdate,
-      onError: handleError,
-      onStatusChange: handleStatusChange,
-      reconnectAttempts: 5,
-      reconnectDelay: 1000
-    })
+    // Update connection status
+    setIsConnected(true)
 
-    newWs.connect().then(() => {
-      if (symbols.length > 0) {
-        newWs.subscribe(symbols)
-      }
-    })
-
-    setWs(newWs)
-  }, [symbols, onUpdate, handleError, handleStatusChange])
-
-  useEffect(() => {
-    connect()
     return () => {
-      if (ws) {
-        ws.disconnect()
+      // Clean up event listeners
+      polygonWebSocket.off('quote', handleQuote)
+      polygonWebSocket.off('aggregate', handleAggregate)
+      polygonWebSocket.off('error', handleError)
+      polygonWebSocket.off('max_reconnects')
+
+      // Unsubscribe and disconnect
+      if (symbols.length > 0) {
+        polygonWebSocket.unsubscribe(symbols)
       }
     }
-  }, [connect])
-
-  useEffect(() => {
-    if (ws && isConnected) {
-      ws.subscribe(symbols)
-    }
-  }, [ws, isConnected, symbols])
+  }, [symbols, handleQuote, handleAggregate, handleError])
 
   const reconnect = useCallback(() => {
-    connect()
-  }, [connect])
+    polygonWebSocket.disconnect()
+    polygonWebSocket.connect()
+    if (symbols.length > 0) {
+      polygonWebSocket.subscribe(symbols)
+    }
+    setIsConnected(true)
+    setError(null)
+  }, [symbols])
 
   return {
     isConnected,

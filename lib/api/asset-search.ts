@@ -1,104 +1,180 @@
 import type { Asset, AssetDetails, NewsItem } from "@/types/asset"
+import { polygonService } from './polygon-service'
+import { formatDistanceToNow } from 'date-fns'
+import { TickerDetails, AggregateBar, NewsItem as PolygonNewsItem } from '../../types/polygon'
 
-const mockAssets: Asset[] = [
-  { id: "1", symbol: "AAPL", name: "Apple Inc.", assetClass: "stocks", price: 175.84, change: 2.5, score: 85 },
-  { id: "2", symbol: "MSFT", name: "Microsoft Corporation", assetClass: "stocks", price: 380.45, change: 1.8, score: 82 },
-  { id: "3", symbol: "GOOGL", name: "Alphabet Inc.", assetClass: "stocks", price: 142.65, change: -0.5, score: 80 },
-  { id: "4", symbol: "AMZN", name: "Amazon.com Inc.", assetClass: "stocks", price: 168.32, change: 1.2, score: 83 },
-  { id: "5", symbol: "META", name: "Meta Platforms Inc.", assetClass: "stocks", price: 468.90, change: 3.1, score: 79 },
-  { id: "6", symbol: "TSLA", name: "Tesla Inc.", assetClass: "stocks", price: 193.57, change: -2.3, score: 75 },
-  { id: "7", symbol: "NVDA", name: "NVIDIA Corporation", assetClass: "stocks", price: 726.13, change: 4.2, score: 88 },
-  { id: "8", symbol: "JPM", name: "JPMorgan Chase & Co.", assetClass: "stocks", price: 183.99, change: 0.8, score: 81 },
-  { id: "9", symbol: "V", name: "Visa Inc.", assetClass: "stocks", price: 278.56, change: 1.1, score: 84 },
-  { id: "10", symbol: "WMT", name: "Walmart Inc.", assetClass: "stocks", price: 175.84, change: 0.9, score: 77 }
-]
+// Cache for search results
+const searchCache = new Map<string, {
+  data: Asset[];
+  timestamp: number;
+}>();
 
-// This is a mock implementation. In a real-world scenario, you would integrate with actual APIs.
+const SEARCH_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export async function searchAssets(query: string): Promise<Asset[]> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500))
-  
-  // Filter assets based on query
-  return mockAssets.filter(asset => 
-    asset.symbol.toLowerCase().includes(query.toLowerCase()) ||
-    asset.name.toLowerCase().includes(query.toLowerCase())
-  )
-}
+  if (!query) return [];
 
-export async function getAssetDetails(symbol: string) {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500))
+  // Check cache first
+  const cached = searchCache.get(query);
+  if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_DURATION) {
+    return cached.data;
+  }
 
-  return {
-    name: mockAssets.find(a => a.symbol === symbol)?.name || "Unknown Company",
-    description: "A leading technology company focused on innovation and growth.",
-    sector: "Technology",
-    industry: "Consumer Electronics",
-    marketCap: 2500000000000,
-    peRatio: 28.5,
-    dividendYield: 0.5,
-    beta: 1.2,
-    eps: 6.5,
-    high52Week: 198.23,
-    low52Week: 124.17,
-    volume: 82500000,
-    price: 175.84,
-    relatedAssets: mockAssets.slice(0, 3),
-    newsItems: [
-      {
-        id: "1",
-        title: "Company Announces New Product Line",
-        summary: "Revolutionary new products expected to drive growth",
-        url: "#",
-        publishedAt: new Date().toISOString(),
-        source: "Financial Times"
-      },
-      {
-        id: "2",
-        title: "Q4 Earnings Beat Expectations",
-        summary: "Strong performance across all segments",
-        url: "#",
-        publishedAt: new Date().toISOString(),
-        source: "Reuters"
-      },
-      {
-        id: "3",
-        title: "Strategic Partnership Announced",
-        summary: "New collaboration to expand market reach",
-        url: "#",
-        publishedAt: new Date().toISOString(),
-        source: "Bloomberg"
-      }
-    ]
+  try {
+    const response = await polygonService.searchTickers(query);
+    
+    const assets: Asset[] = response.results.map((ticker: TickerDetails) => ({
+      id: ticker.ticker,
+      symbol: ticker.ticker,
+      name: ticker.name,
+      assetClass: ticker.market.toLowerCase(),
+      price: 0, // Will be updated with real-time data
+      change: 0, // Will be updated with real-time data
+      score: calculateAssetScore(ticker),
+    }));
+
+    // Update cache
+    searchCache.set(query, {
+      data: assets,
+      timestamp: Date.now(),
+    });
+
+    return assets;
+  } catch (error) {
+    console.error('Error searching assets:', error);
+    return [];
   }
 }
 
-export async function getAssetChartData(assetId: string, timeframe: string) {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500))
+export async function getAssetDetails(symbol: string): Promise<AssetDetails> {
+  try {
+    const [details, quote, news] = await Promise.all([
+      polygonService.getTickerDetails(symbol),
+      polygonService.getLastQuote(symbol),
+      polygonService.getMarketNews(symbol, 5),
+    ]);
 
-  // Generate mock chart data based on timeframe
-  const points = timeframe === "1D" ? 24 : 
-                timeframe === "1W" ? 7 : 
-                timeframe === "1M" ? 30 : 
-                timeframe === "3M" ? 90 : 
-                timeframe === "1Y" ? 365 : 1825
+    const tickerDetails = details.results;
+    const lastQuote = quote.results;
 
-  const basePrice = 150
-  const volatility = 0.02
-
-  return Array.from({ length: points }, (_, i) => {
-    const date = new Date()
-    date.setDate(date.getDate() - (points - i))
-    
-    const randomWalk = Array.from({ length: i + 1 }, () => 
-      (Math.random() - 0.5) * volatility
-    ).reduce((a, b) => a + b, 0)
+    // Get related assets based on similar market cap range
+    const relatedAssets = await getRelatedAssets(tickerDetails.market_cap);
 
     return {
-      date: date.toISOString().split('T')[0],
-      price: basePrice * (1 + randomWalk)
+      name: tickerDetails.name,
+      description: tickerDetails.description || 'No description available.',
+      sector: 'Technology', // Note: Basic tier doesn't provide sector info
+      industry: 'Technology', // Note: Basic tier doesn't provide industry info
+      marketCap: tickerDetails.market_cap || 0,
+      peRatio: 0, // Note: Would need additional API calls for this data
+      dividendYield: 0, // Note: Would need additional API calls for this data
+      beta: 0, // Note: Would need additional API calls for this data
+      eps: 0, // Note: Would need additional API calls for this data
+      high52Week: 0, // Note: Would need additional API calls for this data
+      low52Week: 0, // Note: Would need additional API calls for this data
+      volume: 0,
+      price: (lastQuote.P + lastQuote.p) / 2, // Midpoint of bid/ask
+      relatedAssets,
+      newsItems: news.results.map((item: PolygonNewsItem) => ({
+        id: item.id,
+        title: item.title,
+        summary: item.description || 'No summary available.',
+        url: item.article_url,
+        publishedAt: item.published_utc,
+        source: item.publisher.name,
+      })),
+    };
+  } catch (error) {
+    console.error('Error fetching asset details:', error);
+    throw new Error('Failed to fetch asset details');
+  }
+}
+
+export async function getAssetChartData(symbol: string, timeframe: string) {
+  try {
+    let multiplier = 1;
+    let timespan: 'minute' | 'hour' | 'day' = 'day';
+    let fromDate = new Date();
+
+    // Configure timeframe parameters
+    switch (timeframe) {
+      case '1D':
+        timespan = 'minute';
+        multiplier = 5;
+        fromDate.setDate(fromDate.getDate() - 1);
+        break;
+      case '1W':
+        timespan = 'hour';
+        multiplier = 1;
+        fromDate.setDate(fromDate.getDate() - 7);
+        break;
+      case '1M':
+        timespan = 'day';
+        multiplier = 1;
+        fromDate.setMonth(fromDate.getMonth() - 1);
+        break;
+      case '3M':
+        timespan = 'day';
+        multiplier = 1;
+        fromDate.setMonth(fromDate.getMonth() - 3);
+        break;
+      case '1Y':
+        timespan = 'day';
+        multiplier = 1;
+        fromDate.setFullYear(fromDate.getFullYear() - 1);
+        break;
+      default:
+        timespan = 'day';
+        multiplier = 1;
+        fromDate.setFullYear(fromDate.getFullYear() - 5);
     }
-  })
+
+    const response = await polygonService.getAggregates(
+      symbol,
+      multiplier,
+      timespan,
+      fromDate.toISOString().split('T')[0],
+      new Date().toISOString().split('T')[0]
+    );
+
+    return response.results.map((bar: AggregateBar) => ({
+      date: new Date(bar.t).toISOString().split('T')[0],
+      price: bar.c,
+    }));
+  } catch (error) {
+    console.error('Error fetching chart data:', error);
+    throw new Error('Failed to fetch chart data');
+  }
+}
+
+async function getRelatedAssets(marketCap: number): Promise<Asset[]> {
+  try {
+    // Get stocks in similar market cap range
+    const response = await polygonService.searchTickers('', 5);
+    
+    return response.results.map((ticker: TickerDetails) => ({
+      id: ticker.ticker,
+      symbol: ticker.ticker,
+      name: ticker.name,
+      assetClass: ticker.market.toLowerCase(),
+      price: 0,
+      change: 0,
+      score: calculateAssetScore(ticker),
+    }));
+  } catch (error) {
+    console.error('Error fetching related assets:', error);
+    return [];
+  }
+}
+
+function calculateAssetScore(ticker: TickerDetails): number {
+  // Basic scoring based on available metrics
+  let score = 75; // Base score
+
+  if (ticker.market_cap && ticker.market_cap > 1e11) score += 10; // Large cap bonus
+  if (ticker.active) score += 5; // Active trading bonus
+  if (ticker.primary_exchange === 'XNAS' || ticker.primary_exchange === 'XNYS') score += 5; // Major exchange bonus
+
+  return Math.min(100, Math.max(0, score)); // Ensure score is between 0 and 100
 }
 
