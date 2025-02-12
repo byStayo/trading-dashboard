@@ -37,8 +37,9 @@ export async function GET(request: NextRequest) {
       validatedParams.ticker,
       validatedParams.multiplier,
       validatedParams.timespan,
-      range,
-      { adjusted: validatedParams.adjusted }
+      range.from.toISOString().split('T')[0],
+      range.to.toISOString().split('T')[0],
+      validatedParams.adjusted
     )
 
     return NextResponse.json(data)
