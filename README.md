@@ -1,5 +1,7 @@
 # Trading Dashboard
 
+[![Vercel Production Deployment](https://img.shields.io/github/deployments/byStayo/trading-dashboard/Production?label=vercel&logo=vercel&logoColor=white)](https://trading-dashboard-bystayo.vercel.app)
+
 A modern, real-time trading dashboard built with Next.js and Polygon.io API integration. This platform provides comprehensive market analysis tools, real-time stock data, and technical indicators for informed trading decisions.
 
 ## Features
