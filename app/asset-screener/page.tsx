@@ -106,14 +106,32 @@ export default function AssetScreenerPage() {
     value: string | number | boolean
   ) => {
     setScreeningCriteria((prevCriteria: ScreeningCriteria) => {
-      const updatedCategory = {
-        ...prevCriteria[category],
-        [field]: value,
+      if (category === 'fundamentals') {
+        return {
+          ...prevCriteria,
+          fundamentals: {
+            ...prevCriteria.fundamentals,
+            [field]: value,
+          },
+        }
+      } else if (category === 'technicals') {
+        return {
+          ...prevCriteria,
+          technicals: {
+            ...prevCriteria.technicals,
+            [field]: value,
+          },
+        }
+      } else if (category === 'sentiment') {
+        return {
+          ...prevCriteria,
+          sentiment: {
+            ...prevCriteria.sentiment,
+            [field]: value,
+          },
+        }
       }
-      return {
-        ...prevCriteria,
-        [category]: updatedCategory,
-      }
+      return prevCriteria
     })
 
     toast({
