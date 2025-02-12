@@ -13,11 +13,12 @@ import { RiskAssessment } from "@/components/ai-researcher/risk-assessment"
 import { ResearchReport } from "@/components/ai-researcher/research-report"
 import { TrendAnalysis } from "@/components/ai-researcher/trend-analysis"
 import { BadgeAlertIcon as AlertIcon, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react"
+import { EconomicData, ResearchReport as ResearchReportType } from "@/types/ai-researcher"
 
 export function AIResearcherDashboard() {
-  const [economicData, setEconomicData] = useState(null)
-  const [alerts, setAlerts] = useState([])
-  const [selectedReport, setSelectedReport] = useState(null)
+  const [economicData, setEconomicData] = useState<EconomicData | null>(null)
+  const [alerts, setAlerts] = useState<Array<{ title: string; description: string }>>([])
+  const [selectedReport, setSelectedReport] = useState<ResearchReportType | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {

@@ -1,51 +1,74 @@
-import type { Asset, DateRange, Strategy, BacktestResults, StrategyParameters } from "@/types/backtesting"
+import { BacktestParameters, BacktestResults, Strategy, StrategyParameters } from "@/types/backtesting"
 
-export async function runBacktest(
-  assets: Asset[],
-  dateRange: DateRange,
-  strategy: Strategy,
-  parameters: StrategyParameters,
-): Promise<BacktestResults> {
-  // TODO: Implement actual API call to backtesting service
-  // This is a mock implementation
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        performanceData: generateMockPerformanceData(),
-        metrics: {
-          totalReturn: 15.5,
-          annualizedReturn: 7.2,
-          sharpeRatio: 1.3,
-          sortinoRatio: 1.5,
-          maxDrawdown: -12.4,
-          winRate: 58.3,
-        },
-        comparisonData: [
-          { name: "SPY", return: 10.2, sharpeRatio: 0.9, maxDrawdown: -15.1 },
-          { name: "QQQ", return: 18.7, sharpeRatio: 1.1, maxDrawdown: -18.3 },
-          { name: "BTC", return: 45.6, sharpeRatio: 1.8, maxDrawdown: -35.2 },
-          { name: "TLT", return: 5.3, sharpeRatio: 0.6, maxDrawdown: -8.7 },
-        ],
-      })
-    }, 2000)
+export async function runBacktest(params: BacktestParameters): Promise<BacktestResults> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1000))
+
+  // Generate mock backtest results
+  const dates = Array.from({ length: 180 }, (_, i) => {
+    const date = new Date(params.startDate)
+    date.setDate(date.getDate() + i)
+    return date.toISOString().split('T')[0]
   })
+
+  const returns = dates.map(() => (Math.random() - 0.48) * 2) // Slightly positive bias
+  const cumulativeReturns = returns.reduce((acc, curr) => [...acc, (acc[acc.length - 1] || 1) * (1 + curr)], [] as number[])
+
+  return {
+    returns,
+    dates,
+    metrics: {
+      totalReturn: (cumulativeReturns[cumulativeReturns.length - 1] - 1) * 100,
+      annualizedReturn: 12.3,
+      sharpeRatio: 1.8,
+      maxDrawdown: -15.2,
+      volatility: 18.5
+    },
+    trades: [
+      {
+        date: dates[10],
+        type: "buy",
+        asset: params.assets[0],
+        price: 150.25,
+        quantity: 100
+      },
+      {
+        date: dates[50],
+        type: "sell",
+        asset: params.assets[0],
+        price: 165.50,
+        quantity: 50
+      },
+      {
+        date: dates[90],
+        type: "buy",
+        asset: params.assets[1],
+        price: 280.75,
+        quantity: 75
+      },
+      {
+        date: dates[130],
+        type: "sell",
+        asset: params.assets[1],
+        price: 295.25,
+        quantity: 75
+      }
+    ]
+  }
 }
 
 export async function optimizeStrategy(
   strategy: Strategy,
-  initialParameters: StrategyParameters,
+  initialParameters: StrategyParameters
 ): Promise<StrategyParameters> {
-  // TODO: Implement actual API call to strategy optimization service
-  // This is a mock implementation
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        ...initialParameters,
-        optimizedParam1: initialParameters.param1 * 1.1,
-        optimizedParam2: initialParameters.param2 * 0.9,
-      })
-    }, 3000)
-  })
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 2000))
+
+  // Return slightly modified parameters to simulate optimization
+  return Object.entries(initialParameters).reduce((acc, [key, value]) => ({
+    ...acc,
+    [key]: value * (1 + (Math.random() - 0.5) * 0.2) // Adjust by ±10%
+  }), {} as StrategyParameters)
 }
 
 function generateMockPerformanceData() {

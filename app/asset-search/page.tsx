@@ -1,173 +1,213 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { AssetCard } from "@/components/asset-search/asset-card"
 import { RelatedAssets } from "@/components/asset-search/related-assets"
-import { AssetDetails } from "@/components/asset-search/asset-details"
-import { AssetChart } from "@/components/asset-search/asset-chart"
-import { NewsPanel } from "@/components/asset-search/news-panel"
+import { searchAssets, getAssetDetails } from "@/lib/api/asset-search"
 import { useDebounce } from "@/lib/hooks/use-debounce"
-import { searchAssets, getAssetDetails, getRelatedAssets, getAssetNews } from "@/lib/api/asset-search"
 import { useToast } from "@/components/ui/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Asset } from "@/types/asset-screener"
+
+interface AssetDetails {
+  name: string
+  description: string
+  sector: string
+  industry: string
+  marketCap: number
+  peRatio: number
+  dividendYield: number
+  beta: number
+  yearHigh: number
+  yearLow: number
+}
+
+interface NewsItem {
+  id: string
+  title: string
+  summary: string
+  url: string
+  publishedAt: string
+  source: string
+}
+
+interface APIResponse {
+  name: string
+  description: string
+  sector: string
+  industry: string
+  marketCap: number
+  peRatio: number
+  dividendYield: number
+  beta: number
+  yearHigh: number
+  yearLow: number
+  relatedAssets: Asset[]
+  newsItems: NewsItem[]
+}
 
 export default function AssetSearchPage() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [searchResults, setSearchResults] = useState([])
-  const [selectedAsset, setSelectedAsset] = useState(null)
-  const [assetDetails, setAssetDetails] = useState(null)
-  const [relatedAssets, setRelatedAssets] = useState([])
-  const [assetNews, setAssetNews] = useState([])
+  const [searchResults, setSearchResults] = useState<Asset[]>([])
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
+  const [assetDetails, setAssetDetails] = useState<AssetDetails | null>(null)
+  const [relatedAssets, setRelatedAssets] = useState<Asset[]>([])
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState("overview")
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false)
+  const debouncedSearchTerm = useDebounce(searchTerm, 500)
   const { toast } = useToast()
 
-  const debouncedSearchTerm = useDebounce(searchTerm, 300)
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!debouncedSearchTerm) {
+        setSearchResults([])
+        return
+      }
 
-  const performSearch = useCallback(async () => {
-    if (debouncedSearchTerm) {
       setIsLoading(true)
       try {
         const results = await searchAssets(debouncedSearchTerm)
-        setSearchResults(results)
+        setSearchResults(results as Asset[])
       } catch (error) {
         console.error("Error searching assets:", error)
         toast({
           title: "Search Error",
-          description: "An error occurred while searching for assets. Please try again.",
+          description: "An error occurred while searching assets. Please try again.",
           variant: "destructive",
         })
       } finally {
         setIsLoading(false)
       }
-    } else {
-      setSearchResults([])
     }
+
+    performSearch()
   }, [debouncedSearchTerm, toast])
 
-  useEffect(() => {
-    performSearch()
-  }, [performSearch])
-
-  const handleAssetSelect = async (asset) => {
+  const handleAssetSelect = async (asset: Asset) => {
     setSelectedAsset(asset)
-    setIsLoading(true)
+    setIsLoadingDetails(true)
+
     try {
-      const [details, related, news] = await Promise.all([
-        getAssetDetails(asset.id),
-        getRelatedAssets(asset.id),
-        getAssetNews(asset.id),
-      ])
-      setAssetDetails(details)
-      setRelatedAssets(related)
-      setAssetNews(news)
+      const response = await getAssetDetails(asset.symbol)
+      const details = response as unknown as APIResponse
+      
+      setAssetDetails({
+        name: details.name,
+        description: details.description,
+        sector: details.sector,
+        industry: details.industry,
+        marketCap: details.marketCap,
+        peRatio: details.peRatio,
+        dividendYield: details.dividendYield,
+        beta: details.beta,
+        yearHigh: details.yearHigh,
+        yearLow: details.yearLow,
+      })
+      setRelatedAssets(details.relatedAssets)
+      setNewsItems(details.newsItems)
     } catch (error) {
       console.error("Error fetching asset details:", error)
       toast({
-        title: "Data Fetch Error",
-        description: "An error occurred while fetching asset details. Please try again.",
+        title: "Error",
+        description: "Failed to load asset details. Please try again.",
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setIsLoadingDetails(false)
     }
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold mb-6">AI-Powered Asset Search</h1>
-
+    <div className="container mx-auto p-6">
       <Card>
         <CardHeader>
-          <CardTitle>Search Global Financial Instruments</CardTitle>
-          <CardDescription>
-            Scan and rank assets across stocks, crypto, bonds, ETFs, indices, commodities, and forex
-          </CardDescription>
+          <CardTitle>Asset Search</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-2">
+          <div className="relative">
             <Input
+              type="text"
               placeholder="Search assets..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
+              className="w-full"
             />
-            <Button onClick={performSearch}>
-              <Search className="h-4 w-4 mr-2" />
-              Search
-            </Button>
+            {isLoading && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </div>
+            )}
           </div>
 
-          {isLoading ? (
-            <div className="mt-4 space-y-2">
-              {[...Array(3)].map((_, index) => (
-                <Skeleton key={index} className="h-20 w-full" />
-              ))}
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <ScrollArea className="h-[600px]">
+                {searchResults.map((asset) => (
+                  <AssetCard key={asset.id} asset={asset} onSelect={() => handleAssetSelect(asset)} />
+                ))}
+                {!isLoading && searchTerm && searchResults.length === 0 && (
+                  <p className="text-center text-muted-foreground">No assets found</p>
+                )}
+              </ScrollArea>
             </div>
-          ) : (
-            <ScrollArea className="h-[300px] mt-4">
-              {searchResults.map((asset) => (
-                <AssetCard key={asset.id} asset={asset} onSelect={() => handleAssetSelect(asset)} />
-              ))}
-            </ScrollArea>
-          )}
+
+            {selectedAsset && (
+              <div className="lg:col-span-2">
+                <Tabs defaultValue="details">
+                  <TabsList>
+                    <TabsTrigger value="details">Details</TabsTrigger>
+                    <TabsTrigger value="related">Related Assets</TabsTrigger>
+                    <TabsTrigger value="news">News</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="details">
+                    {isLoadingDetails ? (
+                      <div className="space-y-4">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                        <Skeleton className="h-4 w-2/3" />
+                      </div>
+                    ) : assetDetails ? (
+                      <div className="space-y-4">
+                        <h3 className="text-xl font-bold">{assetDetails.name}</h3>
+                        <p className="text-muted-foreground">{assetDetails.description}</p>
+                        {/* Add more details here */}
+                      </div>
+                    ) : null}
+                  </TabsContent>
+
+                  <TabsContent value="related">
+                    <RelatedAssets assets={relatedAssets} onSelect={handleAssetSelect} />
+                  </TabsContent>
+
+                  <TabsContent value="news">
+                    <div className="space-y-4">
+                      {newsItems.map((item) => (
+                        <Card key={item.id}>
+                          <CardContent className="p-4">
+                            <h4 className="font-semibold">{item.title}</h4>
+                            <p className="text-sm text-muted-foreground">{item.summary}</p>
+                            <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                              <span>{item.source}</span>
+                              <span>{new Date(item.publishedAt).toLocaleDateString()}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
-
-      {selectedAsset && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>{selectedAsset.name}</CardTitle>
-              <CardDescription>{selectedAsset.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="chart">Chart</TabsTrigger>
-                  <TabsTrigger value="fundamentals">Fundamentals</TabsTrigger>
-                  <TabsTrigger value="technicals">Technicals</TabsTrigger>
-                  <TabsTrigger value="news">News</TabsTrigger>
-                </TabsList>
-                <TabsContent value="overview">
-                  <AssetDetails details={assetDetails} />
-                </TabsContent>
-                <TabsContent value="chart">
-                  <AssetChart assetId={selectedAsset.id} />
-                </TabsContent>
-                <TabsContent value="fundamentals">
-                  {/* Implement fundamentals view */}
-                  <p>Fundamentals analysis coming soon...</p>
-                </TabsContent>
-                <TabsContent value="technicals">
-                  {/* Implement technicals view */}
-                  <p>Technical analysis coming soon...</p>
-                </TabsContent>
-                <TabsContent value="news">
-                  <NewsPanel news={assetNews} />
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Related Assets</CardTitle>
-              <CardDescription>AI-recommended alternatives</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RelatedAssets assets={relatedAssets} onSelect={handleAssetSelect} />
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }

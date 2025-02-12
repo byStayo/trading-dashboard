@@ -6,9 +6,19 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { searchAssets } from "@/lib/api/asset-search"
 
-export function AssetSelector({ selectedAssets, setSelectedAssets }) {
+interface Asset {
+  symbol: string
+  name: string
+}
+
+interface AssetSelectorProps {
+  selectedAssets: Asset[]
+  setSelectedAssets: (assets: Asset[]) => void
+}
+
+export function AssetSelector({ selectedAssets, setSelectedAssets }: AssetSelectorProps) {
   const [searchTerm, setSearchTerm] = useState("")
-  const [searchResults, setSearchResults] = useState([])
+  const [searchResults, setSearchResults] = useState<Asset[]>([])
 
   const handleSearch = async () => {
     if (searchTerm.trim()) {

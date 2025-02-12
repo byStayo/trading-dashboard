@@ -1,35 +1,79 @@
 interface HeatmapData {
-  id: string
+  symbol: string
   name: string
+  sector: string
   value: number
-  aiInsights?: string
+  change: number
 }
 
 export async function getHeatmapData(metric: string, timeframe: string): Promise<HeatmapData[]> {
-  // Simulate API call
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-
-  // Mock heatmap data
-  const sectors = [
-    "Technology",
-    "Healthcare",
-    "Financials",
-    "Consumer Discretionary",
-    "Communication Services",
-    "Industrials",
-    "Consumer Staples",
-    "Energy",
-    "Utilities",
-    "Real Estate",
-    "Materials",
+  // TODO: Replace with actual API call
+  // This is a mock implementation
+  return [
+    {
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      sector: "Technology",
+      value: 75,
+      change: 2.5
+    },
+    {
+      symbol: "MSFT",
+      name: "Microsoft Corporation",
+      sector: "Technology",
+      value: 82,
+      change: 1.8
+    },
+    {
+      symbol: "GOOGL",
+      name: "Alphabet Inc.",
+      sector: "Technology",
+      value: 68,
+      change: -0.5
+    },
+    {
+      symbol: "AMZN",
+      name: "Amazon.com Inc.",
+      sector: "Consumer Cyclical",
+      value: 71,
+      change: 1.2
+    },
+    {
+      symbol: "NVDA",
+      name: "NVIDIA Corporation",
+      sector: "Technology",
+      value: 90,
+      change: 4.2
+    },
+    {
+      symbol: "META",
+      name: "Meta Platforms Inc.",
+      sector: "Technology",
+      value: 65,
+      change: -1.5
+    },
+    {
+      symbol: "TSLA",
+      name: "Tesla Inc.",
+      sector: "Automotive",
+      value: 45,
+      change: -3.2
+    },
+    {
+      symbol: "JPM",
+      name: "JPMorgan Chase & Co.",
+      sector: "Financial Services",
+      value: 58,
+      change: 0.8
+    },
+    {
+      symbol: "V",
+      name: "Visa Inc.",
+      sector: "Financial Services",
+      value: 62,
+      change: 1.1
+    }
   ]
-
-  return sectors.map((sector) => ({
-    id: sector.toLowerCase().replace(" ", "-"),
-    name: sector,
-    value: Math.random() * 100,
-    aiInsights: `AI insight for ${sector} based on ${metric} over ${timeframe}`,
-  }))
 }
 
 type UpdateCallback = (update: {

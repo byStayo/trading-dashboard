@@ -80,7 +80,7 @@ export default function ClientManagementPage() {
                   <TableCell>${client.aum.toLocaleString()}</TableCell>
                   <TableCell>{client.lastContact}</TableCell>
                   <TableCell>
-                    <Badge variant={client.status === "Active" ? "success" : "secondary"}>{client.status}</Badge>
+                    <Badge variant={client.status === "Active" ? "default" : "secondary"}>{client.status}</Badge>
                   </TableCell>
                   <TableCell>
                     <Button variant="ghost" size="icon">

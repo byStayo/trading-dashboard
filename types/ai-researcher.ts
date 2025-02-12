@@ -1,3 +1,34 @@
+export interface ResearchReport {
+  id: string
+  title: string
+  summary: string
+  category: string
+  content: string
+  date: string
+  author: string
+}
+
+export interface RiskAssessmentData {
+  recessionRisk: number
+  marketVolatility: number
+  creditRisk: number
+  liquidityRisk: number
+}
+
+export interface GeopoliticalRisk {
+  trends: Array<{
+    name: string
+    impact: "positive" | "negative" | "neutral"
+    description: string
+  }>
+}
+
+export interface EconomicCyclePoint {
+  date: string
+  value: number
+  phase: string
+}
+
 export interface EconomicData {
   gdpGrowth: number
   gdpGrowthChange: number
@@ -7,32 +38,10 @@ export interface EconomicData {
   interestRateChange: number
   unemploymentRate: number
   unemploymentRateChange: number
-  riskAssessment: {
-    recessionRisk: number
-    marketVolatility: number
-    creditRisk: number
-    liquidityRisk: number
-  }
-  economicCycle: {
-    date: string
-    value: number
-  }[]
-  geopoliticalRisk: {
-    trends: {
-      name: string
-      impact: "positive" | "negative" | "neutral"
-      description: string
-    }[]
-  }
-  researchReports: {
-    id: string
-    title: string
-    summary: string
-    category: string
-    content: string
-    date: string
-    author: string
-  }[]
+  riskAssessment: RiskAssessmentData
+  economicCycle: EconomicCyclePoint[]
+  geopoliticalRisk: GeopoliticalRisk
+  researchReports: ResearchReport[]
 }
 
 export interface Alert {

@@ -1,67 +1,93 @@
 "use client"
 
 import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Select } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { BacktestResults } from "./backtest-results"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { StrategyOptimizer } from "./strategy-optimizer"
 import { AssetSelector } from "./asset-selector"
-import { DateRangePicker } from "@/components/ui/date-range-picker"
+import { DatePickerWithRange } from "@/components/ui/date-range-picker"
 import { runBacktest } from "@/lib/api/backtesting"
+import { DateRange } from "react-day-picker"
+import { Strategy } from "@/types/backtesting"
 
 export function BacktestingDashboard() {
-  const [selectedAssets, setSelectedAssets] = useState([])
-  const [dateRange, setDateRange] = useState({ from: null, to: null })
-  const [strategy, setStrategy] = useState("")
-  const [parameters, setParameters] = useState({})
-  const [results, setResults] = useState(null)
+  const [selectedAssets, setSelectedAssets] = useState<string[]>([])
+  const [selectedStrategy, setSelectedStrategy] = useState<Strategy>("momentum")
+  const [backtestResults, setBacktestResults] = useState<BacktestResults | null>(null)
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: new Date(),
+    to: new Date(new Date().setMonth(new Date().getMonth() + 1))
+  })
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    if (range) {
+      setDateRange(range)
+    }
+  }
+
+  const handleStrategyChange = (value: string) => {
+    setSelectedStrategy(value as Strategy)
+  }
 
   const handleRunBacktest = async () => {
+    if (!dateRange.from || !dateRange.to || selectedAssets.length === 0) return
+
+    setIsLoading(true)
     try {
-      const backtestResults = await runBacktest(selectedAssets, dateRange, strategy, parameters)
-      setResults(backtestResults)
+      const results = await runBacktest({
+        assets: selectedAssets,
+        strategy: selectedStrategy,
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+      })
+      setBacktestResults(results)
     } catch (error) {
       console.error("Error running backtest:", error)
-      // TODO: Add error handling UI
+    } finally {
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">AI Trading Strategy Backtesting</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <AssetSelector selectedAssets={selectedAssets} setSelectedAssets={setSelectedAssets} />
-        <DateRangePicker value={dateRange} onChange={setDateRange} />
-      </div>
-      <div className="mb-4">
-        <Select
-          value={strategy}
-          onValueChange={setStrategy}
-          options={[
-            { value: "moving_average_crossover", label: "Moving Average Crossover" },
-            { value: "rsi_overbought_oversold", label: "RSI Overbought/Oversold" },
-            { value: "breakout", label: "Breakout" },
-            { value: "mean_reversion", label: "Mean Reversion" },
-          ]}
-          placeholder="Select a strategy"
-        />
-      </div>
-      <Button onClick={handleRunBacktest}>Run Backtest</Button>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Backtest Configuration</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <AssetSelector selectedAssets={selectedAssets} setSelectedAssets={setSelectedAssets} />
+            <DatePickerWithRange date={dateRange} onSelect={handleDateRangeChange} />
+          </div>
+          <div className="mb-4">
+            <Select value={selectedStrategy} onValueChange={handleStrategyChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select strategy" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="momentum">Momentum</SelectItem>
+                <SelectItem value="meanReversion">Mean Reversion</SelectItem>
+                <SelectItem value="trendFollowing">Trend Following</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={handleRunBacktest} disabled={isLoading}>
+            {isLoading ? "Running..." : "Run Backtest"}
+          </Button>
+        </CardContent>
+      </Card>
 
-      {results && (
-        <Tabs defaultValue="results" className="mt-4">
-          <TabsList>
-            <TabsTrigger value="results">Results</TabsTrigger>
-            <TabsTrigger value="optimizer">Strategy Optimizer</TabsTrigger>
-          </TabsList>
-          <TabsContent value="results">
-            <BacktestResults results={results} />
-          </TabsContent>
-          <TabsContent value="optimizer">
-            <StrategyOptimizer strategy={strategy} initialParameters={parameters} onOptimized={setParameters} />
-          </TabsContent>
-        </Tabs>
+      {backtestResults && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Backtest Results</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <StrategyOptimizer results={backtestResults} />
+          </CardContent>
+        </Card>
       )}
     </div>
   )

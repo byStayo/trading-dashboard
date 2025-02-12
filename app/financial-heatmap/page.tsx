@@ -1,35 +1,30 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Heatmap } from "@/components/financial-heatmap/heatmap"
-import { HeatmapLegend } from "@/components/financial-heatmap/heatmap-legend"
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { getHeatmapData, subscribeToRealtimeUpdates } from "@/lib/api/financial-heatmap"
+import { getHeatmapData } from "@/lib/api/financial-heatmap"
 import { useToast } from "@/components/ui/use-toast"
+import { Loader2 } from "lucide-react"
+
+interface HeatmapData {
+  symbol: string
+  name: string
+  sector: string
+  value: number
+  change: number
+}
 
 export default function FinancialHeatmapPage() {
-  const [heatmapData, setHeatmapData] = useState([])
-  const [selectedMetric, setSelectedMetric] = useState("performance")
-  const [selectedTimeframe, setSelectedTimeframe] = useState("1D")
-  const [showAIInsights, setShowAIInsights] = useState(true)
-  const [alerts, setAlerts] = useState([])
+  const [selectedMetric, setSelectedMetric] = useState<string>("price")
+  const [selectedTimeframe, setSelectedTimeframe] = useState<string>("1d")
+  const [heatmapData, setHeatmapData] = useState<HeatmapData[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true)
       try {
         const data = await getHeatmapData(selectedMetric, selectedTimeframe)
         setHeatmapData(data)
@@ -37,139 +32,87 @@ export default function FinancialHeatmapPage() {
         console.error("Error fetching heatmap data:", error)
         toast({
           title: "Error",
-          description: "Failed to fetch heatmap data. Please try again.",
+          description: "Failed to load heatmap data. Please try again.",
           variant: "destructive",
         })
+      } finally {
+        setIsLoading(false)
       }
     }
 
     fetchData()
-
-    const unsubscribe = subscribeToRealtimeUpdates((update) => {
-      setHeatmapData((prevData) => {
-        return prevData.map((sector) => {
-          if (sector.id === update.sectorId) {
-            return {
-              ...sector,
-              value: update.value,
-              aiInsights: update.aiInsights,
-            }
-          }
-          return sector
-        })
-      })
-
-      if (update.alert) {
-        setAlerts((prevAlerts) => [...prevAlerts, update.alert])
-        toast({
-          title: "Smart Alert",
-          description: update.alert,
-          variant: "default",
-        })
-      }
-    })
-
-    return () => unsubscribe()
   }, [selectedMetric, selectedTimeframe, toast])
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold mb-6">AI-Powered Financial Heatmap</h1>
-
+    <div className="container mx-auto p-6">
       <Card>
         <CardHeader>
           <CardTitle>Market Heatmap</CardTitle>
-          <CardDescription>Visualize market performance and trends</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-between items-center mb-4">
-            <div className="space-x-2">
-              <Select value={selectedMetric} onValueChange={setSelectedMetric}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select metric" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="performance">Performance</SelectItem>
-                  <SelectItem value="volume">Volume</SelectItem>
-                  <SelectItem value="volatility">Volatility</SelectItem>
-                  <SelectItem value="marketCap">Market Cap</SelectItem>
-                  <SelectItem value="peRatio">P/E Ratio</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="Timeframe" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1D">1 Day</SelectItem>
-                  <SelectItem value="1W">1 Week</SelectItem>
-                  <SelectItem value="1M">1 Month</SelectItem>
-                  <SelectItem value="3M">3 Months</SelectItem>
-                  <SelectItem value="1Y">1 Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch id="ai-insights" checked={showAIInsights} onCheckedChange={setShowAIInsights} />
-              <Label htmlFor="ai-insights">Show AI Insights</Label>
-            </div>
+          <div className="flex justify-between items-center mb-6">
+            <Select value={selectedMetric} onValueChange={setSelectedMetric}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select metric" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="price">Price Change</SelectItem>
+                <SelectItem value="volume">Volume</SelectItem>
+                <SelectItem value="volatility">Volatility</SelectItem>
+                <SelectItem value="rsi">RSI</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select timeframe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1d">1 Day</SelectItem>
+                <SelectItem value="1w">1 Week</SelectItem>
+                <SelectItem value="1m">1 Month</SelectItem>
+                <SelectItem value="3m">3 Months</SelectItem>
+                <SelectItem value="1y">1 Year</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <Heatmap data={heatmapData} showAIInsights={showAIInsights} />
-          <HeatmapLegend metric={selectedMetric} />
-
-          <Tabs defaultValue="sectorRotation" className="mt-6">
-            <TabsList>
-              <TabsTrigger value="sectorRotation">Sector Rotation</TabsTrigger>
-              <TabsTrigger value="capitalFlow">Capital Flow</TabsTrigger>
-              <TabsTrigger value="institutionalActivity">Institutional Activity</TabsTrigger>
-            </TabsList>
-            <TabsContent value="sectorRotation">
-              {/* Implement sector rotation analysis */}
-              <p>Sector rotation analysis coming soon...</p>
-            </TabsContent>
-            <TabsContent value="capitalFlow">
-              {/* Implement capital flow visualization */}
-              <p>Capital flow visualization coming soon...</p>
-            </TabsContent>
-            <TabsContent value="institutionalActivity">
-              {/* Implement institutional activity tracking */}
-              <p>Institutional activity tracking coming soon...</p>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Smart Alerts</CardTitle>
-          <CardDescription>AI-detected anomalies and significant market events</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {alerts.length > 0 ? (
-            <ul className="space-y-2">
-              {alerts.map((alert, index) => (
-                <li key={index} className="flex items-center justify-between">
-                  <span>{alert}</span>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline">Details</Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Alert Details</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {/* Implement detailed alert information */}
-                          Detailed information about this alert will be displayed here.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </li>
-              ))}
-            </ul>
+          {isLoading ? (
+            <div className="flex justify-center items-center h-[500px]">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
           ) : (
-            <p>No active alerts at the moment.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {heatmapData.map((item) => (
+                <Card key={item.symbol}>
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-sm text-muted-foreground">{item.symbol}</div>
+                        <div className="text-sm text-muted-foreground">{item.sector}</div>
+                      </div>
+                      <div
+                        className={`text-lg font-bold ${
+                          item.change >= 0 ? "text-green-600" : "text-red-600"
+                        }`}
+                      >
+                        {item.change >= 0 ? "+" : ""}
+                        {item.change.toFixed(2)}%
+                      </div>
+                    </div>
+                    <div
+                      className="mt-2 h-2 rounded-full"
+                      style={{
+                        background: `linear-gradient(90deg, ${
+                          item.value >= 0 ? "rgb(34 197 94)" : "rgb(239 68 68)"
+                        } ${Math.abs(item.value)}%, transparent ${Math.abs(item.value)}%)`,
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

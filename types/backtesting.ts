@@ -9,7 +9,7 @@ export interface DateRange {
   to: Date | null
 }
 
-export type Strategy = "moving_average_crossover" | "rsi_overbought_oversold" | "breakout" | "mean_reversion"
+export type Strategy = "momentum" | "meanReversion" | "trendFollowing"
 
 export interface StrategyParameters {
   [key: string]: number
@@ -37,9 +37,29 @@ export interface BenchmarkComparison {
   maxDrawdown: number
 }
 
+export interface BacktestParameters {
+  assets: string[]
+  strategy: Strategy
+  startDate: Date
+  endDate: Date
+}
+
 export interface BacktestResults {
-  performanceData: PerformanceDataPoint[]
-  metrics: BacktestMetrics
-  comparisonData: BenchmarkComparison[]
+  returns: number[]
+  dates: string[]
+  metrics: {
+    totalReturn: number
+    annualizedReturn: number
+    sharpeRatio: number
+    maxDrawdown: number
+    volatility: number
+  }
+  trades: {
+    date: string
+    type: "buy" | "sell"
+    asset: string
+    price: number
+    quantity: number
+  }[]
 }
 

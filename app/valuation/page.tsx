@@ -12,7 +12,6 @@ import { MonteCarloSimulation } from "@/components/valuation/monte-carlo"
 import { CompanyHealthMetrics } from "@/components/valuation/company-health-metrics"
 import { AnalystEstimates } from "@/components/valuation/analyst-estimates"
 import { fetchStockData } from "@/lib/api/stock-data"
-import { LoadingSpinner } from "@/components/loading-spinner"
 import { ErrorMessage } from "@/components/error-message"
 import { Loader2 } from "lucide-react"
 

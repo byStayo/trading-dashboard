@@ -6,12 +6,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { getAssetChartData } from "@/lib/api/asset-search"
 
+interface ChartDataPoint {
+  date: string
+  price: number
+}
+
 interface AssetChartProps {
   assetId: string
 }
 
 export function AssetChart({ assetId }: AssetChartProps) {
-  const [chartData, setChartData] = useState([])
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([])
   const [timeframe, setTimeframe] = useState("1D")
 
   useEffect(() => {

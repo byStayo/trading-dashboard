@@ -21,7 +21,7 @@ export function TrendAnalysis({ data }: TrendAnalysisProps) {
               <span>{trend.name}</span>
               <Badge
                 variant={
-                  trend.impact === "positive" ? "success" : trend.impact === "negative" ? "destructive" : "secondary"
+                  trend.impact === "positive" ? "default" : trend.impact === "negative" ? "destructive" : "secondary"
                 }
               >
                 {trend.impact}

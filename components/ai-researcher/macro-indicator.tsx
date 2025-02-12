@@ -18,7 +18,7 @@ export function MacroIndicator({ title, value, change, icon: Icon }: MacroIndica
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value.toFixed(2)}</div>
-        <Badge variant={change >= 0 ? "success" : "destructive"} className="mt-1">
+        <Badge variant={change >= 0 ? "default" : "destructive"} className="mt-1">
           {change >= 0 ? "+" : ""}
           {change.toFixed(2)}%
         </Badge>

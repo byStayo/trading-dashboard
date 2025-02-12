@@ -13,6 +13,7 @@ interface AssetDetailsProps {
     eps: number
     high52Week: number
     low52Week: number
+    price: number
   } | null
 }
 

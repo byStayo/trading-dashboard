@@ -279,7 +279,7 @@ export default function PortfolioPage() {
                   <TableCell className="text-right">${holding.currentPrice.toFixed(2)}</TableCell>
                   <TableCell className="text-right">${holding.value.toLocaleString()}</TableCell>
                   <TableCell className="text-right">
-                    <Badge variant={holding.change >= 0 ? "success" : "destructive"}>
+                    <Badge variant={holding.change >= 0 ? "default" : "destructive"}>
                       {holding.change >= 0 ? "+" : ""}
                       {holding.change.toFixed(2)}%
                     </Badge>

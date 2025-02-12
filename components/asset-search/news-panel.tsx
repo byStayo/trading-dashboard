@@ -37,10 +37,10 @@ export function NewsPanel({ news }: NewsPanelProps) {
               <Badge
                 variant={
                   item.sentiment === "positive"
-                    ? "success"
+                    ? "default"
                     : item.sentiment === "negative"
-                      ? "destructive"
-                      : "secondary"
+                    ? "destructive"
+                    : "secondary"
                 }
                 className="mt-2"
               >

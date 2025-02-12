@@ -132,7 +132,7 @@ export default function StockAnalysisPage() {
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold">${stockData.price}</div>
-                    <Badge variant={stockData.change >= 0 ? "success" : "destructive"}>
+                    <Badge variant={stockData.change >= 0 ? "default" : "destructive"}>
                       {stockData.change >= 0 ? (
                         <TrendingUp className="h-4 w-4 mr-1" />
                       ) : (

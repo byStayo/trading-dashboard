@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface ErrorMessageProps {
@@ -8,12 +8,12 @@ interface ErrorMessageProps {
 
 export function ErrorMessage({ message, onRetry }: ErrorMessageProps) {
   return (
-    <div className="flex flex-col items-center justify-center h-full">
-      <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
-      <p className="text-lg font-semibold mb-4">{message}</p>
+    <div className="flex flex-col items-center justify-center space-y-4 text-center">
+      <AlertCircle className="h-8 w-8 text-destructive" />
+      <p className="text-sm text-muted-foreground">{message}</p>
       {onRetry && (
-        <Button onClick={onRetry} variant="outline">
-          Retry
+        <Button variant="outline" onClick={onRetry}>
+          Try Again
         </Button>
       )}
     </div>
