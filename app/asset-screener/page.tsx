@@ -15,46 +15,111 @@ import { screenAssets, getRealtimeData } from "@/lib/api/asset-screener"
 import { Loader2, AlertTriangle } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
+interface Fundamentals {
+  peRatioMin: number
+  peRatioMax: number
+  epsGrowthMin: number
+  debtToEquityMax: number
+  dividendYieldMin: number
+  marketCapMin: number
+}
+
+interface Technicals {
+  rsiMin: number
+  rsiMax: number
+  macdSignal: string
+  movingAveragePeriod: number
+  movingAverageType: string
+}
+
+interface Sentiment {
+  analystRatingMin: number
+  newsScore: string
+  insiderBuying: boolean
+}
+
+interface ScreeningCriteria {
+  assetClass: string
+  fundamentals: Fundamentals
+  technicals: Technicals
+  sentiment: Sentiment
+}
+
+interface Asset {
+  id: string
+  name: string
+  symbol: string
+  assetClass: string
+  price: number
+  change: number
+  score: number
+  volume: number
+  marketCap: number
+  peRatio: number
+}
+
+type ScreeningField = keyof Fundamentals | keyof Technicals | keyof Sentiment
+
+interface AssetData {
+  [key: string]: {
+    price: number
+    change: number
+    volume: number
+    marketCap: number
+    peRatio: number
+  }
+}
+
 export default function AssetScreenerPage() {
-  const [screeningCriteria, setScreeningCriteria] = useState({
+  const [screeningCriteria, setScreeningCriteria] = useState<ScreeningCriteria>({
     assetClass: "stocks",
     fundamentals: {
       peRatioMin: 0,
-      peRatioMax: 100,
-      epsGrowthMin: 0,
+      peRatioMax: 50,
+      epsGrowthMin: 10,
       debtToEquityMax: 2,
       dividendYieldMin: 0,
-      marketCapMin: 0,
+      marketCapMin: 1000000000,
     },
     technicals: {
-      rsiMin: 0,
-      rsiMax: 100,
+      rsiMin: 30,
+      rsiMax: 70,
       macdSignal: "bullish",
       movingAveragePeriod: 50,
       movingAverageType: "simple",
     },
     sentiment: {
-      newsScoreMin: -100,
-      analystRating: "buy",
-      insiderBuying: false,
-      socialMediaBuzz: false,
+      analystRatingMin: 4,
+      newsScore: "positive",
+      insiderBuying: true,
     },
-    customFilters: "",
   })
 
-  const [screeningResults, setScreeningResults] = useState([])
+  const [screeningResults, setScreeningResults] = useState<Asset[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
-  const handleScreeningCriteriaChange = (category, field, value) => {
-    setScreeningCriteria((prevCriteria) => ({
-      ...prevCriteria,
-      [category]: {
+  const handleScreeningCriteriaChange = (
+    category: keyof ScreeningCriteria,
+    field: ScreeningField,
+    value: string | number | boolean
+  ) => {
+    setScreeningCriteria((prevCriteria: ScreeningCriteria) => {
+      const updatedCategory = {
         ...prevCriteria[category],
         [field]: value,
-      },
-    }))
+      }
+      return {
+        ...prevCriteria,
+        [category]: updatedCategory,
+      }
+    })
+
+    toast({
+      title: "Criteria Updated",
+      description: `${category} ${field} set to ${value}`,
+    })
   }
 
   const handleScreening = async () => {
@@ -62,7 +127,7 @@ export default function AssetScreenerPage() {
     setError(null)
     try {
       const results = await screenAssets(screeningCriteria)
-      setScreeningResults(results)
+      setScreeningResults(results as Asset[])
     } catch (error) {
       console.error("Error during asset screening:", error)
       setError("An error occurred while screening assets. Please try again.")
@@ -77,7 +142,7 @@ export default function AssetScreenerPage() {
   }
 
   useEffect(() => {
-    let intervalId
+    let intervalId: NodeJS.Timeout | undefined
     if (screeningResults.length > 0) {
       intervalId = setInterval(async () => {
         try {
@@ -85,15 +150,17 @@ export default function AssetScreenerPage() {
           setScreeningResults((prevResults) =>
             prevResults.map((asset) => ({
               ...asset,
-              ...updatedData[asset.symbol],
-            })),
+              ...(updatedData[asset.symbol] as Partial<Asset>),
+            }))
           )
         } catch (error) {
           console.error("Error fetching real-time data:", error)
         }
-      }, 5000) // Update every 5 seconds
+      }, 5000)
     }
-    return () => clearInterval(intervalId)
+    return () => {
+      if (intervalId) clearInterval(intervalId)
+    }
   }, [screeningResults])
 
   return (
@@ -111,7 +178,6 @@ export default function AssetScreenerPage() {
               <TabsTrigger value="fundamentals">Fundamentals</TabsTrigger>
               <TabsTrigger value="technicals">Technicals</TabsTrigger>
               <TabsTrigger value="sentiment">Sentiment</TabsTrigger>
-              <TabsTrigger value="custom">Custom</TabsTrigger>
             </TabsList>
             <TabsContent value="fundamentals">
               <div className="space-y-4">
@@ -153,11 +219,7 @@ export default function AssetScreenerPage() {
                     type="number"
                     value={screeningCriteria.fundamentals.debtToEquityMax}
                     onChange={(e) =>
-                      handleScreeningCriteriaChange(
-                        "fundamentals",
-                        "debtToEquityMax",
-                        Number.parseFloat(e.target.value),
-                      )
+                      handleScreeningCriteriaChange("fundamentals", "debtToEquityMax", Number.parseFloat(e.target.value))
                     }
                   />
                 </div>
@@ -167,11 +229,7 @@ export default function AssetScreenerPage() {
                     type="number"
                     value={screeningCriteria.fundamentals.dividendYieldMin}
                     onChange={(e) =>
-                      handleScreeningCriteriaChange(
-                        "fundamentals",
-                        "dividendYieldMin",
-                        Number.parseFloat(e.target.value),
-                      )
+                      handleScreeningCriteriaChange("fundamentals", "dividendYieldMin", Number.parseFloat(e.target.value))
                     }
                   />
                 </div>
@@ -260,24 +318,24 @@ export default function AssetScreenerPage() {
                     min={-100}
                     max={100}
                     step={1}
-                    value={[screeningCriteria.sentiment.newsScoreMin]}
-                    onValueChange={(value) => handleScreeningCriteriaChange("sentiment", "newsScoreMin", value[0])}
+                    value={[screeningCriteria.sentiment.analystRatingMin]}
+                    onValueChange={(value) => handleScreeningCriteriaChange("sentiment", "analystRatingMin", value[0])}
                   />
-                  <div className="text-center">{screeningCriteria.sentiment.newsScoreMin}</div>
+                  <div className="text-center">{screeningCriteria.sentiment.analystRatingMin}</div>
                 </div>
                 <div>
                   <Label>Analyst Rating</Label>
                   <Select
-                    value={screeningCriteria.sentiment.analystRating}
-                    onValueChange={(value) => handleScreeningCriteriaChange("sentiment", "analystRating", value)}
+                    value={screeningCriteria.sentiment.newsScore}
+                    onValueChange={(value) => handleScreeningCriteriaChange("sentiment", "newsScore", value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select analyst rating" />
+                      <SelectValue placeholder="Select news score" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="buy">Buy</SelectItem>
-                      <SelectItem value="hold">Hold</SelectItem>
-                      <SelectItem value="sell">Sell</SelectItem>
+                      <SelectItem value="positive">Positive</SelectItem>
+                      <SelectItem value="neutral">Neutral</SelectItem>
+                      <SelectItem value="negative">Negative</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -288,28 +346,6 @@ export default function AssetScreenerPage() {
                     onCheckedChange={(checked) => handleScreeningCriteriaChange("sentiment", "insiderBuying", checked)}
                   />
                   <Label htmlFor="insider-buying">Insider Buying</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="social-media-buzz"
-                    checked={screeningCriteria.sentiment.socialMediaBuzz}
-                    onCheckedChange={(checked) =>
-                      handleScreeningCriteriaChange("sentiment", "socialMediaBuzz", checked)
-                    }
-                  />
-                  <Label htmlFor="social-media-buzz">Social Media Buzz</Label>
-                </div>
-              </div>
-            </TabsContent>
-            <TabsContent value="custom">
-              <div className="space-y-4">
-                <div>
-                  <Label>Custom Filter Query</Label>
-                  <Input
-                    value={screeningCriteria.customFilters}
-                    onChange={(e) => setScreeningCriteria({ ...screeningCriteria, customFilters: e.target.value })}
-                    placeholder="Enter custom filter query"
-                  />
                 </div>
               </div>
             </TabsContent>
