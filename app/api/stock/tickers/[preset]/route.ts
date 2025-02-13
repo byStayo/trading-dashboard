@@ -181,8 +181,8 @@ export async function GET(
         break
 
       case 'indices':
-        // Major market indices
-        tickers = ['^GSPC', '^DJI', '^IXIC', '^RUT', '^VIX']
+        // Major market indices ETFs
+        tickers = ['SPY', 'QQQ', 'DIA', '^VIX']
         break
 
       case 'custom':

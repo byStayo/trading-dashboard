@@ -3,6 +3,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
 import { useState, useEffect } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useMarketIndices } from "@/lib/hooks/use-market-indices"
 
 interface ChartData {
   time: number
@@ -48,54 +50,49 @@ export const DEFAULT_CONFIG: TickerConfig = {
 }
 
 export function MarketOverview() {
+  const { indices, isLoading, error } = useMarketIndices()
+
+  if (error) {
+    return (
+      <div className="text-sm text-red-500 p-4">
+        {error}
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex justify-between items-center">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="text-center">
+                <Skeleton className="h-4 w-20 mb-2" />
+                <Skeleton className="h-6 w-24 mb-2" />
+                <Skeleton className="h-5 w-16" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <CardContent className="p-4">
-        <div className="flex justify-between items-center mb-4">
-          {mockIndices.map((index) => (
-            <div key={index.name} className="text-center">
+        <div className="flex justify-between items-center">
+          {indices.map((index) => (
+            <div key={index.symbol} className="text-center">
               <div className="text-sm font-medium">{index.name}</div>
               <div className="text-lg font-bold">{index.value.toFixed(2)}</div>
-              <Badge variant={index.change >= 0 ? "success" : "destructive"}>
-                {index.change > 0 ? "+" : ""}
-                {index.change.toFixed(2)}%
+              <Badge variant={index.changePercent >= 0 ? "default" : "destructive"}>
+                {index.changePercent >= 0 ? "+" : ""}
+                {index.changePercent.toFixed(2)}%
               </Badge>
             </div>
           ))}
         </div>
-        <Tabs defaultValue="chart" className="w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="chart" className="text-xs">
-              Market Overview
-            </TabsTrigger>
-            <TabsTrigger value="sectors" className="text-xs">
-              Sector Performance
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="chart" className="mt-2">
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={mockChartData}>
-                <XAxis dataKey="time" hide />
-                <YAxis hide />
-                <Tooltip />
-                <Area type="monotone" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </TabsContent>
-          <TabsContent value="sectors" className="mt-2">
-            <div className="space-y-1">
-              {mockSectorPerformance.map((sector) => (
-                <div key={sector.name} className="flex justify-between items-center">
-                  <span className="text-sm">{sector.name}</span>
-                  <Badge variant={sector.value >= 0 ? "success" : "destructive"}>
-                    {sector.value > 0 ? "+" : ""}
-                    {sector.value.toFixed(2)}%
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
       </CardContent>
     </Card>
   )
