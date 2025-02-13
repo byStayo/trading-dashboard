@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   LineChart,
@@ -18,7 +18,6 @@ import {
 } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useCompletion } from "ai/react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
 
@@ -36,20 +35,28 @@ export function ContextAwareChart() {
   const [chartType, setChartType] = useState<"line" | "area" | "bar">("line")
   const [isLoading, setIsLoading] = useState(false)
 
-  const { complete } = useCompletion({
-    api: "/api/generate",
-  })
-
   const generateChartData = useCallback(async () => {
     if (!userQuery) return
 
     setIsLoading(true)
     setError(null)
     try {
-      const response = await complete(`Generate chart data for the query: ${userQuery}`)
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: `Generate chart data for the query: ${userQuery}` }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate chart data')
+      }
+
+      const responseText = await response.text()
       let parsedData
       try {
-        parsedData = JSON.parse(response)
+        parsedData = JSON.parse(responseText)
       } catch (parseError) {
         console.error("Error parsing AI response:", parseError)
         setError("Failed to parse AI response. Please try again.")
@@ -69,42 +76,61 @@ export function ContextAwareChart() {
     } finally {
       setIsLoading(false)
     }
-  }, [userQuery, complete])
-
-  useEffect(() => {
-    if (userQuery) {
-      generateChartData()
-    }
-  }, [userQuery, generateChartData])
+  }, [userQuery])
 
   const renderChart = () => {
     if (!chartData.length) return null
 
-    const ChartComponent = chartType === "bar" ? BarChart : chartType === "area" ? AreaChart : LineChart
+    const dataKeys = Object.keys(chartData[0]).filter((key) => key !== "date")
+    const getRandomColor = () => `#${Math.floor(Math.random() * 16777215).toString(16)}`
+
+    if (chartType === "line") {
+      return (
+        <ResponsiveContainer width="100%" height={400}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            {dataKeys.map((key) => (
+              <Line key={key} type="monotone" dataKey={key} stroke={getRandomColor()} />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      )
+    }
+
+    if (chartType === "area") {
+      return (
+        <ResponsiveContainer width="100%" height={400}>
+          <AreaChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            {dataKeys.map((key) => {
+              const color = getRandomColor()
+              return <Area key={key} type="monotone" dataKey={key} stroke={color} fill={color} />
+            })}
+          </AreaChart>
+        </ResponsiveContainer>
+      )
+    }
 
     return (
       <ResponsiveContainer width="100%" height={400}>
-        <ChartComponent data={chartData}>
+        <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="date" />
           <YAxis />
           <Tooltip />
           <Legend />
-          {Object.keys(chartData[0])
-            .filter((key) => key !== "date")
-            .map((key, index) => {
-              const Component = chartType === "bar" ? Bar : chartType === "area" ? Area : Line
-              return (
-                <Component
-                  key={key}
-                  type="monotone"
-                  dataKey={key}
-                  stroke={`#${Math.floor(Math.random() * 16777215).toString(16)}`}
-                  fill={chartType === "area" ? `#${Math.floor(Math.random() * 16777215).toString(16)}` : undefined}
-                />
-              )
-            })}
-        </ChartComponent>
+          {dataKeys.map((key) => (
+            <Bar key={key} dataKey={key} fill={getRandomColor()} />
+          ))}
+        </BarChart>
       </ResponsiveContainer>
     )
   }
