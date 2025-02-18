@@ -40,17 +40,46 @@ const generateMockData = (): SymbolData[] => {
   })
 }
 
+const initialData = [
+  {
+    symbol: "AAPL",
+    data: Array(12).fill(null).map((_, i) => ({
+      time: `${i + 9}:00`,
+      volume: 500000 // Fixed initial volume
+    })),
+    totalVolume: 6000000,
+    averageVolume: 500000
+  },
+  // Add other symbols with fixed initial data
+  {
+    symbol: "GOOGL",
+    data: Array(12).fill(null).map((_, i) => ({
+      time: `${i + 9}:00`,
+      volume: 500000
+    })),
+    totalVolume: 6000000,
+    averageVolume: 500000
+  }
+]
+
 export function TradingVolume() {
-  const [data, setData] = useState<SymbolData[]>(generateMockData())
+  const [data, setData] = useState<SymbolData[]>(initialData)
+  const [isHydrated, setIsHydrated] = useState(false)
   const [selectedSymbol, setSelectedSymbol] = useState<string>("AAPL")
 
   useEffect(() => {
+    setIsHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isHydrated) return
+
     const interval = setInterval(() => {
       setData(generateMockData())
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [isHydrated])
 
   const selectedData = data.find((item) => item.symbol === selectedSymbol) || data[0]
 

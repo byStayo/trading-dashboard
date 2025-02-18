@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AggregatesResponse } from '@/lib/services/polygon-service'
+import { AggregatesResponse } from '@/lib/api/polygon-service'
 
 interface UseStockAggregatesParams {
   ticker: string

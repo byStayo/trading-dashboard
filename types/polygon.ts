@@ -150,4 +150,49 @@ export interface AggregateMessage extends WebSocketMessage {
   s: number;    // Start timestamp
   e: number;    // End timestamp
   z: number;    // Average trade size
+}
+
+// Snapshot types
+export interface SnapshotTicker {
+  ticker: string;
+  day?: {
+    o: number;  // Open price
+    h: number;  // High price
+    l: number;  // Low price
+    c: number;  // Close price
+    v: number;  // Volume
+    vw: number; // Volume weighted average price
+  };
+  lastTrade?: {
+    p: number;  // Price
+    s: number;  // Size
+    t: number;  // Timestamp
+    c: number[]; // Conditions
+  };
+  min?: {
+    av: number;  // Accumulated volume
+    vw: number;  // Volume weighted average price
+    o: number;   // Open price
+    c: number;   // Close price
+    h: number;   // High price
+    l: number;   // Low price
+    v: number;   // Volume
+    t: number;   // Timestamp
+  };
+  prevDay?: {
+    o: number;  // Open price
+    h: number;  // High price
+    l: number;  // Low price
+    c: number;  // Close price
+    v: number;  // Volume
+    vw: number; // Volume weighted average price
+  };
+  todaysChange?: number;
+  todaysChangePerc?: number;
+  updated: number;
+}
+
+export interface SnapshotResponse {
+  status: string;
+  tickers: SnapshotTicker[];
 } 

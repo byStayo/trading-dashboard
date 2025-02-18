@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { polygonService } from '../services/polygon-service'
+import { polygonService } from '@/lib/api/polygon-service'
 
 export interface StockData {
   symbol: string

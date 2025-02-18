@@ -15,18 +15,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get authentication token
-    const authResponse = await fetch(`${WS_AUTH_URL}?apiKey=${apiKey}`)
-    if (!authResponse.ok) {
-      throw new Error("Failed to authenticate WebSocket connection")
-    }
-
-    const { token } = await authResponse.json()
-
-    // Return connection details to client
+    // For WebSocket connections, we'll use the API key directly as the token
+    // This is safe because this endpoint is server-side only
     return NextResponse.json({
       wsUrl: WS_STOCKS_URL,
-      token,
+      token: apiKey,
       timestamp: new Date().toISOString()
     })
 

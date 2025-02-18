@@ -1,93 +1,81 @@
-import { useState, useEffect, useCallback } from 'react'
-import { polygonWebSocket } from '@/lib/api/polygon-websocket'
-import { QuoteMessage, AggregateMessage } from '@/types/polygon'
+import { useEffect, useState } from 'react'
+import { AggregateMessage } from '@/types/polygon'
+import { polygonClient } from '@/lib/api/polygon-client'
 
-interface UseStockWebSocketParams {
+interface WebSocketConfig {
   symbols: string[]
-  onQuote?: (data: QuoteMessage) => void
   onAggregate?: (data: AggregateMessage) => void
   onError?: (error: Error) => void
-}
-
-interface UseStockWebSocketReturn {
-  isConnected: boolean
-  error: Error | null
-  reconnect: () => void
+  onStatusChange?: (status: string) => void
 }
 
 export function useStockWebSocket({
   symbols,
-  onQuote,
   onAggregate,
-  onError
-}: UseStockWebSocketParams): UseStockWebSocketReturn {
-  const [isConnected, setIsConnected] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
+  onError,
+  onStatusChange
+}: WebSocketConfig) {
+  const [isClient, setIsClient] = useState(false);
+  const [client, setClient] = useState<typeof polygonClient | null>(null);
 
-  const handleQuote = useCallback((quote: QuoteMessage) => {
-    if (onQuote) {
-      onQuote(quote)
-    }
-  }, [onQuote])
+  // Set isClient to true once component mounts
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-  const handleAggregate = useCallback((agg: AggregateMessage) => {
-    if (onAggregate) {
-      onAggregate(agg)
+  // Initialize client after component mounts
+  useEffect(() => {
+    if (isClient) {
+      setClient(polygonClient);
     }
-  }, [onAggregate])
-
-  const handleError = useCallback((err: Error) => {
-    setError(err)
-    if (onError) {
-      onError(err)
-    }
-  }, [onError])
+  }, [isClient]);
 
   useEffect(() => {
-    // Set up event listeners
-    polygonWebSocket.on('quote', handleQuote)
-    polygonWebSocket.on('aggregate', handleAggregate)
-    polygonWebSocket.on('error', handleError)
-    polygonWebSocket.on('max_reconnects', () => {
-      handleError(new Error('Maximum reconnection attempts reached'))
-    })
+    if (!isClient || !client) return;
 
-    // Connect and subscribe
-    polygonWebSocket.connect()
-    if (symbols.length > 0) {
-      polygonWebSocket.subscribe(symbols)
-    }
-
-    // Update connection status
-    setIsConnected(true)
-
-    return () => {
-      // Clean up event listeners
-      polygonWebSocket.off('quote', handleQuote)
-      polygonWebSocket.off('aggregate', handleAggregate)
-      polygonWebSocket.off('error', handleError)
-      polygonWebSocket.off('max_reconnects')
-
-      // Unsubscribe and disconnect
-      if (symbols.length > 0) {
-        polygonWebSocket.unsubscribe(symbols)
+    const handleAggregate = (data: AggregateMessage) => {
+      if (symbols.includes(data.sym)) {
+        onAggregate?.(data);
       }
-    }
-  }, [symbols, handleQuote, handleAggregate, handleError])
+    };
 
-  const reconnect = useCallback(() => {
-    polygonWebSocket.disconnect()
-    polygonWebSocket.connect()
-    if (symbols.length > 0) {
-      polygonWebSocket.subscribe(symbols)
+    const handleError = (error: Error) => {
+      onError?.(error);
+    };
+
+    const handleStatus = (status: string) => {
+      onStatusChange?.(status);
+    };
+
+    // Connect to WebSocket if not already connected
+    if (!client.isConnected()) {
+      client.connect();
     }
-    setIsConnected(true)
-    setError(null)
-  }, [symbols])
+
+    // Subscribe to each symbol
+    symbols.forEach(symbol => {
+      client.subscribe('aggregate', (data: AggregateMessage) => {
+        if (data.type === 'error') {
+          handleError(data.error);
+        } else if (data.type === 'status') {
+          handleStatus(data.status);
+        } else {
+          handleAggregate(data);
+        }
+      });
+    });
+
+    // Cleanup function
+    return () => {
+      if (isClient && client) {
+        symbols.forEach(symbol => {
+          client.unsubscribe('aggregate', handleAggregate);
+        });
+      }
+    };
+  }, [symbols, onAggregate, onError, onStatusChange, isClient, client]);
 
   return {
-    isConnected,
-    error,
-    reconnect
-  }
+    isConnected: isClient && client ? client.isConnected() : false
+  };
 } 

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import dynamic from "next/dynamic"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { PolygonTickerWall } from "./polygon-ticker-wall"
 
 const Chart = dynamic(() => import("./market-overview-chart"), { ssr: false })
 
@@ -100,6 +101,12 @@ export function MarketOverview() {
               ))}
             </div>
           </ScrollArea>
+        </CardContent>
+      </Card>
+
+      <Card className="col-span-12">
+        <CardContent>
+          <PolygonTickerWall />
         </CardContent>
       </Card>
     </div>

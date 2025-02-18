@@ -1,4 +1,4 @@
-import { AggregatesResponse } from '../services/polygon-service'
+import { AggregatesResponse } from '@/lib/api/polygon-service'
 
 export interface TechnicalIndicators {
   sma: number[]

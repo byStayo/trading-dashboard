@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PolygonService } from '@/lib/services/polygon-service'
+import { PolygonService } from '@/lib/api/polygon-service'
 import { z } from 'zod'
 
 // Request validation schema

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { polygonService } from "@/lib/api/polygon-service"
+import { rateLimitManager } from "@/lib/utils/rate-limiter"
 
 // Cache for previous day data
 const prevDayCache = new Map<string, {
@@ -14,6 +15,25 @@ export async function GET(
   { params }: { params: { symbol: string } }
 ) {
   try {
+    // Rate limiting
+    const ip = request.headers.get("x-forwarded-for") || "unknown"
+    const rateLimit = await rateLimitManager.checkRateLimit(ip, "/api/stock/prev", {
+      tokensPerInterval: 20,
+      interval: "minute"
+    });
+
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please try again later." },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': rateLimit.retryAfter?.toString() || '60'
+          }
+        }
+      )
+    }
+
     const symbol = params.symbol.toUpperCase()
 
     // Check cache

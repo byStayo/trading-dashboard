@@ -8,21 +8,33 @@ import { Button } from "@/components/ui/button"
 import { Globe2, Moon, Sun, Clock } from "lucide-react"
 import { useMarketHours } from "@/lib/hooks/use-market-hours"
 import { LiveTickerBar } from "@/components/live-ticker-bar"
+import { TickerConfig } from "./ticker-config-dialog"
 
 export function MarketStatusHeader() {
-  const [currentTime, setCurrentTime] = useState(new Date())
+  const [currentTime, setCurrentTime] = useState<Date | null>(null)
   const { marketHours, isLoading: isLoadingHours, isError: isErrorHours } = useMarketHours()
   const { setTheme, theme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [tickerConfig, setTickerConfig] = useState<TickerConfig>({
+    preset: 'trending',
+    sector: undefined,
+    customTickers: [],
+    maxTickers: 20
+  })
 
+  // Handle hydration
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  // Only start the timer after hydration
   useEffect(() => {
+    if (!mounted) return
+    
+    setCurrentTime(new Date())
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [mounted])
 
   const getMarketStatusIcon = (status: string) => {
     switch (status) {
@@ -36,6 +48,10 @@ export function MarketStatusHeader() {
         return <Globe2 className="h-4 w-4 text-muted-foreground" />
     }
   }
+
+  const formattedTime = mounted && currentTime
+    ? currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "Loading..."
 
   return (
     <Card className="rounded-none border-x-0">
@@ -53,7 +69,7 @@ export function MarketStatusHeader() {
             </Button>
             {!isLoadingHours && !isErrorHours && marketHours && (
               <Badge
-                variant={marketHours === "during" ? "success" : marketHours === "after" ? "default" : "warning"}
+                variant={marketHours === "during" ? "default" : marketHours === "after" ? "secondary" : "outline"}
                 className="text-xs px-2 py-0.5 flex items-center"
               >
                 {getMarketStatusIcon(marketHours)}
@@ -66,11 +82,11 @@ export function MarketStatusHeader() {
           <div className="flex items-center space-x-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="text-xs font-medium">
-              {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              {formattedTime}
             </span>
           </div>
         </div>
-        <LiveTickerBar />
+        <LiveTickerBar config={tickerConfig} onConfigUpdate={setTickerConfig} />
       </CardContent>
     </Card>
   )
