@@ -1,48 +1,62 @@
-import { SignJWT, jwtVerify, JWTPayload } from 'jose';
+import { SignJWT, jwtVerify } from 'jose';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { metrics } from '../utils/metrics';
-import { cacheManager } from '../utils/cache-manager';
+import { CacheManager } from '../utils/cache-manager';
+import { User } from '../types/user';
 
-// Schema for user data
-const UserSchema = z.object({
-  id: z.string(),
-  email: z.string().email(),
-  role: z.enum(['user', 'admin']),
-  apiKey: z.string().optional(),
-  permissions: z.array(z.string()).default([]),
-});
-
-export type User = z.infer<typeof UserSchema>;
+/**
+ * Authentication Service
+ * 
+ * Environment variables:
+ * - JWT_SECRET: Secret key for signing JWT tokens (required)
+ * - JWT_EXPIRY: Token expiry time in zeit/ms format (default: '24h')
+ *   Examples: '24h', '1d', '60m', '3600s'
+ *   
+ * Note: Setting a short expiry time (less than 1 hour) may cause frequent 
+ * re-authentication and disrupt user experience. Use the refresh token flow 
+ * for maintaining longer sessions with short-lived tokens.
+ */
 
 // Schema for JWT payload
-const JWTPayloadSchema = z.object({
+export const JWTPayloadSchema = z.object({
   jti: z.string(),
   iat: z.number(),
   exp: z.number(),
   sub: z.string(),
   email: z.string(),
-  role: z.enum(['user', 'admin']),
+  role: z.enum(['user', 'admin'])
 });
 
 export type JWTData = z.infer<typeof JWTPayloadSchema>;
 
 // Configuration
 const AUTH_CONFIG = {
-  JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key',
-  JWT_EXPIRY: '24h',
+  // Use environment variable or default to 24h to maintain backward compatibility
+  // This allows configuration without code changes and prevents breaking existing workflows
+  JWT_EXPIRY: process.env.JWT_EXPIRY || '24h',
   REFRESH_TOKEN_EXPIRY: 30 * 24 * 60 * 60 * 1000, // 30 days
-  API_KEY_PREFIX: 'pk_',
-  MAX_ACTIVE_SESSIONS: 5,
+  API_KEY_PREFIX: 'pk_'
 };
 
-class AuthService {
+export class AuthService {
   private static instance: AuthService;
+  private cacheManager: CacheManager;
   private jwtSecret: Uint8Array;
 
   private constructor() {
-    this.jwtSecret = new TextEncoder().encode(AUTH_CONFIG.JWT_SECRET);
+    this.cacheManager = CacheManager.getInstance();
+    this.jwtSecret = new TextEncoder().encode(process.env.JWT_SECRET || 'default-secret');
+    
+    // Log the JWT expiry time during initialization to make configuration issues more visible
+    logger.info(`JWT token expiry time configured as: ${AUTH_CONFIG.JWT_EXPIRY}`);
+    
+    // Check if the expiry time is too short (less than 1 hour)
+    if (AUTH_CONFIG.JWT_EXPIRY.includes('m') && parseInt(AUTH_CONFIG.JWT_EXPIRY) < 60) {
+      logger.warn(`Warning: Short JWT expiry time (${AUTH_CONFIG.JWT_EXPIRY}) may cause frequent re-authentication`);
+    }
+    
     this.setupMetrics();
   }
 
@@ -58,20 +72,13 @@ class AuthService {
       name: 'auth_login_attempts',
       help: 'Number of login attempts',
       type: 'counter',
-      labels: ['status'],
-    });
-
-    metrics.register({
-      name: 'auth_token_validations',
-      help: 'Number of token validations',
-      type: 'counter',
-      labels: ['status'],
+      labels: ['status']
     });
 
     metrics.register({
       name: 'auth_active_sessions',
       help: 'Number of active sessions',
-      type: 'gauge',
+      type: 'gauge'
     });
   }
 
@@ -96,7 +103,7 @@ class AuthService {
       const refreshToken = nanoid(64);
 
       // Store refresh token in cache
-      await cacheManager.set(
+      await this.cacheManager.set(
         `refresh:${refreshToken}`,
         {
           userId: user.id,
@@ -139,7 +146,7 @@ class AuthService {
   async refreshToken(refreshToken: string): Promise<{ token: string; refreshToken: string }> {
     try {
       // Get refresh token data from cache
-      const tokenData = await cacheManager.get<{
+      const tokenData = await this.cacheManager.get<{
         userId: string;
         jti: string;
         createdAt: number;
@@ -156,7 +163,7 @@ class AuthService {
       }
 
       // Invalidate old refresh token
-      await cacheManager.invalidate(`refresh:${refreshToken}`, 'MARKET_DATA');
+      await this.cacheManager.invalidate(`refresh:${refreshToken}`, 'MARKET_DATA');
 
       // Create new tokens
       return this.createToken(user);
@@ -170,10 +177,10 @@ class AuthService {
     try {
       if (jti) {
         // Revoke specific token
-        await cacheManager.invalidate(`token:${jti}`, 'MARKET_DATA');
+        await this.cacheManager.invalidate(`token:${jti}`, 'MARKET_DATA');
       } else {
         // Revoke all user's tokens
-        await cacheManager.invalidateByTag(`user:${userId}`);
+        await this.cacheManager.invalidateByTag(`user:${userId}`, 'MARKET_DATA');
       }
 
       // Update active sessions count
@@ -189,7 +196,7 @@ class AuthService {
     const apiKey = `${AUTH_CONFIG.API_KEY_PREFIX}${nanoid(32)}`;
     
     try {
-      await cacheManager.set(
+      await this.cacheManager.set(
         `apikey:${apiKey}`,
         { userId },
         'MARKET_DATA',
@@ -208,7 +215,7 @@ class AuthService {
 
   async validateApiKey(apiKey: string): Promise<User | null> {
     try {
-      const keyData = await cacheManager.get<{ userId: string }>(
+      const keyData = await this.cacheManager.get<{ userId: string }>(
         `apikey:${apiKey}`,
         'MARKET_DATA'
       );
@@ -226,7 +233,7 @@ class AuthService {
 
   async revokeApiKey(apiKey: string) {
     try {
-      await cacheManager.invalidate(`apikey:${apiKey}`, 'MARKET_DATA');
+      await this.cacheManager.invalidate(`apikey:${apiKey}`, 'MARKET_DATA');
     } catch (error) {
       logger.error('Error revoking API key:', error);
       throw new Error('Failed to revoke API key');
@@ -235,7 +242,7 @@ class AuthService {
 
   private async getActiveSessions(userId: string): Promise<string[]> {
     try {
-      const sessions = await cacheManager.get<string[]>(
+      const sessions = await this.cacheManager.get<string[]>(
         `sessions:${userId}`,
         'MARKET_DATA'
       );
@@ -247,15 +254,14 @@ class AuthService {
   }
 
   private async getUserById(userId: string): Promise<User | null> {
-    // This is a placeholder. In a real application, you would fetch the user from your database
-    const mockUser: User = {
+    // This would typically query a database
+    // For now, return a mock user
+    return {
       id: userId,
       email: 'user@example.com',
       role: 'user',
-      permissions: ['read:market-data'],
+      permissions: [],
     };
-
-    return mockUser;
   }
 }
 

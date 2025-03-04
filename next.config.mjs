@@ -21,6 +21,9 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  env: {
+    POLYGON_API_KEY: process.env.POLYGON_API_KEY,
+  },
 }
 
 mergeConfig(nextConfig, userConfig)

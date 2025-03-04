@@ -6,48 +6,41 @@ import { errorHandler } from '@/lib/middleware/error-handler';
 import { validateQueryParams } from '@/lib/utils/request-validator';
 import { MarketDataRequestSchema } from '@/lib/utils/request-validator';
 import { formatPaginatedResponse } from '@/lib/utils/response-formatter';
+import { NextResponse } from 'next/server';
+import { PolygonService } from '@/lib/api/polygon-service';
 
-export async function GET(req: NextRequest) {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const symbols = searchParams.get('symbols')?.split(',') || [];
+  const operation = searchParams.get('operation');
+
+  if (!symbols.length) {
+    return NextResponse.json({ error: 'No symbols provided' }, { status: 400 });
+  }
+
   try {
-    // Apply middleware
-    const authResponse = await authMiddleware(req);
-    if (authResponse.status !== 200) return authResponse;
+    const polygonService = PolygonService.getInstance();
 
-    const rateLimitResponse = await rateLimitMiddleware(req);
-    if (rateLimitResponse.status !== 200) return rateLimitResponse;
-
-    // Validate query parameters
-    const query = validateQueryParams(req.nextUrl.searchParams, MarketDataRequestSchema);
-
-    // Get market data from service
-    const marketData = await polygonService.getSnapshots(query.symbols);
-
-    // Calculate pagination
-    const total = marketData.tickers.length;
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const start = (page - 1) * limit;
-    const end = start + limit;
-
-    // Paginate results
-    const paginatedData = marketData.tickers.slice(start, end);
-
-    // Format response
-    return formatPaginatedResponse(
-      paginatedData,
-      {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-      {
-        source: 'polygon',
-        cached: true,
-      }
-    );
+    switch (operation) {
+      case 'snapshot':
+        const snapshots = await polygonService.getSnapshots(symbols);
+        return NextResponse.json(snapshots);
+      
+      case 'details':
+        const details = await Promise.all(
+          symbols.map(symbol => polygonService.getTickerDetails(symbol))
+        );
+        return NextResponse.json(details);
+      
+      default:
+        return NextResponse.json({ error: 'Invalid operation' }, { status: 400 });
+    }
   } catch (error) {
-    return errorHandler(error, req);
+    console.error('Market data API error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
+      { status: 500 }
+    );
   }
 }
 

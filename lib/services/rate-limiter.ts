@@ -1,4 +1,4 @@
-import { cacheManager } from '../utils/cache-manager';
+import { CacheManager } from '../utils/cache-manager';
 import { logger } from '../utils/logger';
 import { metrics } from '../utils/metrics';
 
@@ -14,33 +14,51 @@ interface RateLimitInfo {
   total: number;
   blocked?: boolean;
   blockExpiry?: number;
+  warning?: string;
+}
+
+interface RateLimitKeys {
+  points: string;
+  block: string;
 }
 
 const RATE_LIMIT_DEFAULTS = {
   API: {
-    points: 100,
-    duration: 60, // 1 minute
-    blockDuration: 300, // 5 minutes
-  },
-  WEBSOCKET: {
-    points: 1000,
+    points: 20,
     duration: 60,
     blockDuration: 300,
   },
+  WEBSOCKET: {
+    points: 30,
+    duration: 60,
+    blockDuration: 600,
+  },
 };
 
-class RateLimiterService {
-  private static instance: RateLimiterService;
+// Add WebSocket connection pooling
+const WS_CONNECTION_CONFIG = {
+  MAX_RECONNECT_ATTEMPTS: 5,
+  INITIAL_BACKOFF: 1000, // 1 second
+  MAX_BACKOFF: 30000, // 30 seconds
+  BACKOFF_MULTIPLIER: 2,
+};
+
+export class RateLimiter {
+  private static instance: RateLimiter;
+  private cacheManager: CacheManager;
+  private wsConnectionAttempts: Map<string, number> = new Map();
+  private wsLastAttemptTime: Map<string, number> = new Map();
 
   private constructor() {
+    this.cacheManager = CacheManager.getInstance();
     this.setupMetrics();
   }
 
-  public static getInstance(): RateLimiterService {
-    if (!RateLimiterService.instance) {
-      RateLimiterService.instance = new RateLimiterService();
+  public static getInstance(): RateLimiter {
+    if (!RateLimiter.instance) {
+      RateLimiter.instance = new RateLimiter();
     }
-    return RateLimiterService.instance;
+    return RateLimiter.instance;
   }
 
   private setupMetrics() {
@@ -57,14 +75,49 @@ class RateLimiterService {
       type: 'counter',
       labels: ['type'],
     });
+
+    metrics.register({
+      name: 'ws_connection_attempts',
+      help: 'Number of WebSocket connection attempts',
+      type: 'counter',
+      labels: ['status'],
+    });
   }
 
-  private generateKeys(identifier: string, type: 'API' | 'WEBSOCKET') {
-    const prefix = `ratelimit:${type.toLowerCase()}`;
+  private generateKeys(identifier: string, type: 'API' | 'WEBSOCKET'): RateLimitKeys {
     return {
-      points: `${prefix}:${identifier}:points`,
-      block: `${prefix}:${identifier}:block`,
+      points: `ratelimit:${type}:${identifier}:points`,
+      block: `ratelimit:${type}:${identifier}:block`,
     };
+  }
+
+  async canConnect(identifier: string): Promise<{ allowed: boolean; backoff?: number }> {
+    const attempts = this.wsConnectionAttempts.get(identifier) || 0;
+    const lastAttempt = this.wsLastAttemptTime.get(identifier) || 0;
+    const now = Date.now();
+
+    if (attempts >= WS_CONNECTION_CONFIG.MAX_RECONNECT_ATTEMPTS) {
+      const backoff = Math.min(
+        WS_CONNECTION_CONFIG.INITIAL_BACKOFF * Math.pow(WS_CONNECTION_CONFIG.BACKOFF_MULTIPLIER, attempts),
+        WS_CONNECTION_CONFIG.MAX_BACKOFF
+      );
+
+      if (now - lastAttempt < backoff) {
+        return { allowed: false, backoff: backoff - (now - lastAttempt) };
+      }
+    }
+
+    this.wsConnectionAttempts.set(identifier, attempts + 1);
+    this.wsLastAttemptTime.set(identifier, now);
+    
+    metrics.record('ws_connection_attempts', 1, { status: attempts === 0 ? 'initial' : 'retry' });
+    
+    return { allowed: true };
+  }
+
+  resetConnectionAttempts(identifier: string) {
+    this.wsConnectionAttempts.delete(identifier);
+    this.wsLastAttemptTime.delete(identifier);
   }
 
   async consume(
@@ -77,28 +130,28 @@ class RateLimiterService {
 
     try {
       // Check if blocked
-      const blocked = await cacheManager.get<boolean>(keys.block, 'MARKET_DATA');
+      const blocked = await this.cacheManager.get<boolean>(keys.block, 'MARKET_DATA');
       if (blocked) {
-        const blockExpiry = await this.getKeyTTL(keys.block);
+        const blockExpiry = await this.cacheManager.getKeyTTL(keys.block, 'MARKET_DATA');
         metrics.record('rate_limit_requests', 1, { status: 'blocked', type });
         return {
           remaining: 0,
           reset: now + blockExpiry,
           total: config.points,
           blocked: true,
-          blockExpiry: blockExpiry,
+          blockExpiry,
         };
       }
 
       // Get current points
-      const pointsData = await cacheManager.get<{
+      const pointsData = await this.cacheManager.get<{
         points: number;
         expires: number;
       }>(keys.points, 'MARKET_DATA');
 
       if (!pointsData) {
         // First request
-        await cacheManager.set(
+        await this.cacheManager.set(
           keys.points,
           { points: config.points - 1, expires: now + config.duration },
           'MARKET_DATA',
@@ -115,7 +168,7 @@ class RateLimiterService {
 
       // Check if expired
       if (now >= pointsData.expires) {
-        await cacheManager.set(
+        await this.cacheManager.set(
           keys.points,
           { points: config.points - 1, expires: now + config.duration },
           'MARKET_DATA',
@@ -134,7 +187,7 @@ class RateLimiterService {
       if (pointsData.points <= 0) {
         // Block if configured
         if (config.blockDuration) {
-          await cacheManager.set(
+          await this.cacheManager.set(
             keys.block,
             true,
             'MARKET_DATA',
@@ -154,7 +207,7 @@ class RateLimiterService {
       }
 
       // Consume point
-      await cacheManager.set(
+      await this.cacheManager.set(
         keys.points,
         { points: pointsData.points - 1, expires: pointsData.expires },
         'MARKET_DATA',
@@ -182,8 +235,8 @@ class RateLimiterService {
     const keys = this.generateKeys(identifier, type);
     try {
       await Promise.all([
-        cacheManager.invalidate(keys.points, 'MARKET_DATA'),
-        cacheManager.invalidate(keys.block, 'MARKET_DATA'),
+        this.cacheManager.invalidate(keys.points, 'MARKET_DATA'),
+        this.cacheManager.invalidate(keys.block, 'MARKET_DATA'),
       ]);
     } catch (error) {
       logger.error('Error resetting rate limit:', error);
@@ -200,15 +253,15 @@ class RateLimiterService {
 
     try {
       const [pointsData, blocked] = await Promise.all([
-        cacheManager.get<{
+        this.cacheManager.get<{
           points: number;
           expires: number;
         }>(keys.points, 'MARKET_DATA'),
-        cacheManager.get<boolean>(keys.block, 'MARKET_DATA'),
+        this.cacheManager.get<boolean>(keys.block, 'MARKET_DATA'),
       ]);
 
       if (blocked) {
-        const blockExpiry = await this.getKeyTTL(keys.block);
+        const blockExpiry = await this.cacheManager.getKeyTTL(keys.block, 'MARKET_DATA');
         return {
           remaining: 0,
           reset: now + blockExpiry,
@@ -236,16 +289,4 @@ class RateLimiterService {
       return null;
     }
   }
-
-  private async getKeyTTL(key: string): Promise<number> {
-    try {
-      const ttl = await cacheManager.getTTL(key);
-      return Math.max(0, ttl);
-    } catch (error) {
-      logger.error('Error getting TTL:', error);
-      return 0;
-    }
-  }
-}
-
-export const rateLimiterService = RateLimiterService.getInstance(); 
+} 

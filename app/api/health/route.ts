@@ -61,21 +61,21 @@ export async function GET() {
     // Get metrics
     const metricsData = await metrics.getAll();
     status.metrics = {
-      requests: Object.values(metricsData).reduce((sum, metric) => {
-        if (metric.type === 'counter' && metric.name.includes('request')) {
-          return sum + metric.value;
+      requests: Object.entries(metricsData).reduce((sum, [name, values]) => {
+        if (name.includes('request') && values.length > 0) {
+          return sum + values[values.length - 1].value;
         }
         return sum;
       }, 0),
-      errors: Object.values(metricsData).reduce((sum, metric) => {
-        if (metric.type === 'counter' && metric.name.includes('error')) {
-          return sum + metric.value;
+      errors: Object.entries(metricsData).reduce((sum, [name, values]) => {
+        if (name.includes('error') && values.length > 0) {
+          return sum + values[values.length - 1].value;
         }
         return sum;
       }, 0),
-      latency: Object.values(metricsData).reduce((sum, metric) => {
-        if (metric.type === 'histogram' && metric.name.includes('duration')) {
-          return sum + metric.value;
+      latency: Object.entries(metricsData).reduce((sum, [name, values]) => {
+        if (name.includes('duration') && values.length > 0) {
+          return sum + values[values.length - 1].value;
         }
         return sum;
       }, 0),
