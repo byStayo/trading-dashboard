@@ -1,0 +1,363 @@
+{
+  "project": "Abacus Terminal",
+  "analysis_date": "2025-04-23",
+  "total_loc": 37074,
+  "total_files": 363,
+  "average_file_size": 102.1,
+  "test_coverage_percentage": 15,
+  "modules": [
+    {
+      "name": "Dashboard",
+      "description": "Main UI and layout components",
+      "loc": 8500,
+      "files": 24,
+      "complexity": "Medium",
+      "test_coverage": 15,
+      "completion_percentage": 80
+    },
+    {
+      "name": "Portfolio Analytics",
+      "description": "Portfolio tracking and analysis",
+      "loc": 6200,
+      "files": 21,
+      "complexity": "High",
+      "test_coverage": 20,
+      "completion_percentage": 60
+    },
+    {
+      "name": "Market Data",
+      "description": "Polygon.io integration and data caching",
+      "loc": 5300,
+      "files": 18,
+      "complexity": "High",
+      "test_coverage": 25,
+      "completion_percentage": 70
+    },
+    {
+      "name": "Technical Analysis",
+      "description": "Chart patterns and indicators",
+      "loc": 4800,
+      "files": 16,
+      "complexity": "High",
+      "test_coverage": 10,
+      "completion_percentage": 75
+    },
+    {
+      "name": "Authentication",
+      "description": "User auth, JWT handling",
+      "loc": 3200,
+      "files": 8,
+      "complexity": "Medium",
+      "test_coverage": 30,
+      "completion_percentage": 95
+    },
+    {
+      "name": "Watchlist",
+      "description": "Stock watchlist management",
+      "loc": 2100,
+      "files": 7,
+      "complexity": "Low",
+      "test_coverage": 15,
+      "completion_percentage": 90
+    },
+    {
+      "name": "Trading Journal",
+      "description": "Trade entry and analysis",
+      "loc": 2900,
+      "files": 11,
+      "complexity": "Medium",
+      "test_coverage": 5,
+      "completion_percentage": 65
+    },
+    {
+      "name": "Asset Screener",
+      "description": "Stock/ETF screening tools",
+      "loc": 3100,
+      "files": 10,
+      "complexity": "Medium",
+      "test_coverage": 0,
+      "completion_percentage": 60
+    },
+    {
+      "name": "Economic Calendar",
+      "description": "Economic event tracking",
+      "loc": 2800,
+      "files": 9,
+      "complexity": "Medium",
+      "test_coverage": 5,
+      "completion_percentage": 55
+    },
+    {
+      "name": "Financial Heatmap",
+      "description": "Visual market representation",
+      "loc": 2400,
+      "files": 8,
+      "complexity": "Medium",
+      "test_coverage": 0,
+      "completion_percentage": 50
+    },
+    {
+      "name": "AI Research",
+      "description": "AI-powered market insights",
+      "loc": 3800,
+      "files": 12,
+      "complexity": "High",
+      "test_coverage": 0,
+      "completion_percentage": 40
+    },
+    {
+      "name": "Due Diligence",
+      "description": "Company analysis tools",
+      "loc": 3200,
+      "files": 11,
+      "complexity": "Medium",
+      "test_coverage": 5,
+      "completion_percentage": 60
+    },
+    {
+      "name": "Infrastructure",
+      "description": "Caching, rate limiting, middleware",
+      "loc": 6100,
+      "files": 18,
+      "complexity": "High",
+      "test_coverage": 20,
+      "completion_percentage": 75
+    }
+  ],
+  "dependencies": {
+    "aws_services": [
+      {
+        "name": "EC2",
+        "tier": "t3.medium",
+        "monthly_cost": 73.44,
+        "usage": "Application hosting"
+      },
+      {
+        "name": "RDS PostgreSQL",
+        "tier": "db.t3.medium",
+        "monthly_cost": 129.60,
+        "usage": "Database"
+      },
+      {
+        "name": "S3",
+        "tier": "Standard",
+        "monthly_cost": 2.30,
+        "usage": "Static assets"
+      },
+      {
+        "name": "CloudFront",
+        "tier": "Standard",
+        "monthly_cost": 85.00,
+        "usage": "CDN"
+      },
+      {
+        "name": "NAT Gateway",
+        "monthly_cost": 32.85,
+        "usage": "Network Address Translation"
+      },
+      {
+        "name": "Route53",
+        "monthly_cost": 0.50,
+        "usage": "DNS"
+      }
+    ],
+    "saas_services": [
+      {
+        "name": "Polygon.io",
+        "tier": "Starter",
+        "monthly_cost": 299.00,
+        "usage": "Market data"
+      },
+      {
+        "name": "Redis Cloud",
+        "tier": "Pro 15GB",
+        "monthly_cost": 179.00,
+        "usage": "Caching"
+      },
+      {
+        "name": "OpenAI API",
+        "usage": "AI integration",
+        "monthly_cost": 600.00
+      }
+    ],
+    "libraries": [
+      {
+        "name": "Next.js",
+        "version": "14.0.0",
+        "usage": "Frontend framework"
+      },
+      {
+        "name": "React",
+        "version": "18.2.0",
+        "usage": "UI library"
+      },
+      {
+        "name": "TypeScript",
+        "version": "5.2.0",
+        "usage": "Type system"
+      },
+      {
+        "name": "Zustand",
+        "version": "4.4.0",
+        "usage": "State management"
+      },
+      {
+        "name": "Recharts",
+        "version": "2.10.0",
+        "usage": "Data visualization"
+      },
+      {
+        "name": "OpenAI Edge",
+        "version": "1.2.2",
+        "usage": "AI integration"
+      },
+      {
+        "name": "ioredis",
+        "version": "5.3.0",
+        "usage": "Redis client"
+      },
+      {
+        "name": "jose",
+        "version": "5.1.0",
+        "usage": "JWT handling"
+      },
+      {
+        "name": "Zod",
+        "version": "3.22.0",
+        "usage": "Schema validation"
+      }
+    ]
+  },
+  "cost_analysis": {
+    "remaining_development": {
+      "hours": 1060,
+      "cost": 77380.00,
+      "blended_rate": 73.00
+    },
+    "monthly_infrastructure": {
+      "base_cost": 1416.69,
+      "contingency": 212.50,
+      "total": 1629.19,
+      "per_user_at_250": 6.52
+    },
+    "risk_mitigation": {
+      "hours": 640,
+      "cost": 46720.00,
+      "additional_monthly": 700.00
+    }
+  },
+  "feature_gaps": [
+    {
+      "feature": "Real-time Market Data",
+      "status": "Partial",
+      "implementation_gap": "WebSocket implementation exists but using delayed data; needs upgrade to real-time"
+    },
+    {
+      "feature": "Portfolio Management",
+      "status": "Partial",
+      "implementation_gap": "UI components complete, backend API integration incomplete"
+    },
+    {
+      "feature": "Technical Analysis",
+      "status": "Mostly Complete",
+      "implementation_gap": "Algorithm fine-tuning needed for accuracy"
+    },
+    {
+      "feature": "Watchlist",
+      "status": "Complete",
+      "implementation_gap": "None"
+    },
+    {
+      "feature": "Trade Execution",
+      "status": "Missing",
+      "implementation_gap": "Only mock UI exists, no broker integration"
+    },
+    {
+      "feature": "Asset Screener",
+      "status": "Partial",
+      "implementation_gap": "UI complete, filtering logic incomplete"
+    },
+    {
+      "feature": "Economic Calendar",
+      "status": "Partial",
+      "implementation_gap": "UI complete, data integration missing"
+    },
+    {
+      "feature": "AI Insights",
+      "status": "Partial",
+      "implementation_gap": "UI complete, OpenAI integration only partially implemented"
+    },
+    {
+      "feature": "User Authentication",
+      "status": "Complete",
+      "implementation_gap": "None"
+    },
+    {
+      "feature": "Portfolio Optimizer",
+      "status": "Minimal",
+      "implementation_gap": "UI exists, algorithm not implemented"
+    },
+    {
+      "feature": "Due Diligence",
+      "status": "Partial",
+      "implementation_gap": "UI complete, data integration missing"
+    },
+    {
+      "feature": "Trading Journal",
+      "status": "Partial",
+      "implementation_gap": "UI complete, analytics incomplete"
+    }
+  ],
+  "todo_items": [
+    {
+      "file": "/Users/stelios/code projects/trading-dashboard/lib/api/portfolio-analytics.ts",
+      "line": 5,
+      "content": "Implement actual API call to fetch portfolio data"
+    },
+    {
+      "file": "/Users/stelios/code projects/trading-dashboard/lib/api/portfolio-analytics.ts",
+      "line": 103,
+      "content": "Implement actual API call to execute recommendation"
+    },
+    {
+      "file": "/Users/stelios/code projects/trading-dashboard/lib/api/economic-events.ts",
+      "line": 4,
+      "content": "Implement actual API call to fetch economic event data"
+    },
+    {
+      "file": "/Users/stelios/code projects/trading-dashboard/lib/api/portfolio-optimizer.ts",
+      "line": 4,
+      "content": "Implement actual API call to fetch portfolio data"
+    },
+    {
+      "file": "/Users/stelios/code projects/trading-dashboard/lib/api/portfolio-optimizer.ts",
+      "line": 57,
+      "content": "Implement actual API call to optimize portfolio"
+    },
+    {
+      "file": "/Users/stelios/code projects/trading-dashboard/lib/api/portfolio-optimizer.ts",
+      "line": 128,
+      "content": "Implement actual API call to execute trade order"
+    },
+    {
+      "file": "/Users/stelios/code projects/trading-dashboard/lib/api/economic-calendar.ts",
+      "line": 20,
+      "content": "Replace with actual API call"
+    },
+    {
+      "file": "/Users/stelios/code projects/trading-dashboard/lib/api/trading-journal.ts",
+      "line": 4,
+      "content": "Implement actual API call to fetch trade data"
+    },
+    {
+      "file": "/Users/stelios/code projects/trading-dashboard/lib/api/due-diligence.ts",
+      "line": 4,
+      "content": "Implement actual API call to due diligence service"
+    },
+    {
+      "file": "/Users/stelios/code projects/trading-dashboard/lib/api/financial-heatmap.ts",
+      "line": 10,
+      "content": "Replace with actual API call"
+    }
+  ]
+}
